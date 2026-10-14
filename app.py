@@ -6,8 +6,6 @@ Entry point. Run with:
 
 Configuration via environment variables:
     ASY_BINARY      Path to the asy executable (default: "asy")
-    ASY_HTTP_URL    URL of asymptote-http-server (e.g. http://localhost:10007)
-                    If set, renders via HTTP instead of shelling out.
     WIKI_DATA_DIR   Storage directory (default: ./data)
     WIKI_PORT       Port to listen on (default: 8080)
     WIKI_HOST       Host to bind (default: 127.0.0.1)
@@ -41,7 +39,6 @@ PAGES_DIR = DATA_DIR / "pages"
 PAGES_DIR.mkdir(parents=True, exist_ok=True)
 
 ASY_BINARY = os.environ.get("ASY_BINARY", "asy")
-ASY_HTTP_URL = os.environ.get("ASY_HTTP_URL", "")
 RENDER_TIMEOUT = int(os.environ.get("RENDER_TIMEOUT", "30"))
 MAX_SOURCE_SIZE = int(os.environ.get("MAX_SOURCE_SIZE", "100_000"))
 
@@ -90,7 +87,6 @@ def render_markdown_with_asy(md_text: str, page_dir: Path) -> str:
                     fmt=fmt,
                     timeout=RENDER_TIMEOUT,
                     asy_binary=ASY_BINARY,
-                    http_url=ASY_HTTP_URL,
                 )
             except Exception as e:
                 return f"<pre class='render-error'>Render failed for {filename}:\n{e}</pre>"
@@ -252,7 +248,6 @@ def new_page():
                         fmt="svg",
                         timeout=RENDER_TIMEOUT,
                         asy_binary=ASY_BINARY,
-                        http_url=ASY_HTTP_URL,
                     )
                 except Exception as e:
                     log.warning("Render failed for %s/%s: %s", page_id, name, e)
@@ -315,7 +310,6 @@ def edit_page(page_id):
                         fmt="svg",
                         timeout=RENDER_TIMEOUT,
                         asy_binary=ASY_BINARY,
-                        http_url=ASY_HTTP_URL,
                     )
                 except Exception as e:
                     log.warning("Re-render failed for %s: %s", f.name, e)
@@ -351,7 +345,7 @@ def not_found(e):
 if __name__ == "__main__":
     host = os.environ.get("WIKI_HOST", "127.0.0.1")
     port = int(os.environ.get("WIKI_PORT", "8080"))
-    log.info("Starting asymwiki on %s:%d (data: %s)", host, port, DATA_DIR)
-    log.info("Renderer: %s", ASY_HTTP_URL or f"binary {ASY_BINARY}")
+    log.info("Starting asymwiki on %s:%d (data: %s, asy: %s)",
+             host, port, DATA_DIR, ASY_BINARY)
     app.run(host=host, port=port, debug=os.environ.get("FLASK_DEBUG") == "1")
 

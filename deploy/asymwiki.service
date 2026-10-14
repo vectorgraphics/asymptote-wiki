@@ -8,7 +8,7 @@ Type=simple
 User=asymptote
 Group=asymptote
 WorkingDirectory=/opt/asymwiki
-Environment=ASY_HTTP_URL=http://127.0.0.1:10007
+Environment=ASY_BINARY=/usr/local/bin/asy
 Environment=WIKI_DATA_DIR=/var/lib/asymwiki
 Environment=WIKI_HOST=127.0.0.1
 Environment=WIKI_PORT=8080

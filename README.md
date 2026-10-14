@@ -18,8 +18,10 @@ asymptote.ualberta.ca
  :10007   Asymptote HTTP render server (existing)
 ```
 
-The wiki calls `localhost:10007` (or invokes `asy` directly) to render
-submissions. It does not modify or depend on the Asymptote source tree.
+The wiki invokes the local `asy` binary directly, running each example
+in its own directory so multi-file examples (imports, data files,
+modules) work naturally. It does not modify or depend on the Asymptote
+source tree.
 
 ## Quick Start (development)
 
@@ -29,10 +31,8 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-# Point the app at your local asy installation or http-server:
+# Point the app at your asy installation:
 export ASY_BINARY=$(which asy)
-# or:
-export ASY_HTTP_URL=http://localhost:10007
 
 python app.py
 # -> http://localhost:8080
@@ -63,21 +63,17 @@ See `deploy/` for the systemd unit and nginx configuration snippet.
 
 ## Rendering
 
-By default the wiki shells out to the `asy` binary:
+The wiki invokes the `asy` binary directly, with the example's directory
+as the working directory. This means multi-file examples work naturally --
+if `main.asy` does `input("data.txt")` or `import "helper"`, those files
+are found alongside it.
 
 ```
+cd data/pages/0001-my-example/
 asy -f svg -o render/main.asy.svg main.asy
 ```
 
-Set `ASY_HTTP_URL` to instead POST to the `asymptote-http-server`, which
-reuses its configured Asymptote environment:
-
-```
-POST http://localhost:10007?f=svg
-Content-Type: application/octet-stream
-<body: raw .asy source>
-```
-
+Supported output formats: `svg`, `pdf`, `html`, `v3d`, `eps`.
 Render timeout defaults to 30 s. Max source size 100 KB per file.
 
 ## License
