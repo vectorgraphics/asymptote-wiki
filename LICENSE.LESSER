@@ -1,0 +1,110 @@
+
+GNU Lesser General Public License
+Version 3, 29 June 2007
+
+Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
+
+Everyone is permitted to copy and distribute verbatim copies of this
+license document, but changing it is not allowed.
+
+
+  This version of the GNU Lesser General Public License incorporates
+the terms and conditions of version 3 of the GNU General Public
+License, supplemented by the additional permissions listed below.
+
+  0. Additional Definitions.
+
+  As used in this License, the term "this License" refers to version 3
+of the GNU Lesser General Public License, and the "GNU GPL" refers to
+version 3 of the GNU General Public License.
+
+  "The Library" refers to a covered work governed by this License,
+other than an Application or a Combined Work as defined below.
+
+  An "Application" is any work that makes use of interprocess
+communication facilities provided by the Library, but which is not
+otherwise a derivate work of the Library.
+
+  A "Combined Work" is a work produced by combining or linking an
+Application with the Library.
+
+  The "Executable" is either the Combined Work, or any executable
+form of the Library for which an Object Form is not available.
+
+  The "Library" means a covered work, other than an Application or a
+Combined Work, that is licensed under this License.
+
+  "Object Form" means the form resulting from mechanical transformation
+or translation of a Source Form, including but not limited to compiled
+object code, generated documentation, and conversions to other media
+types.
+
+  "Source Form" means the preferred form of a work for making changes
+to it, including but not limited to software source code, documentation
+source, and configuration files.
+
+  "Propagate" means to do anything that would give you control of the
+work.
+
+  1. Exception to Section 3 of the GNU GPL.
+
+  As an exception to the Sections 3 and 4 of the GNU GPL, you may
+convey a covered work under terms of your choice that, taken together
+with the terms of the GNU GPL, this License does not impose.
+
+  2. Conveying Modified Versions.
+
+  You may convey a modified version of the Library under this License
+if the following conditions are met:
+
+    a) The work must carry prominent notices stating that you modified
+    it, and the date of any change.
+
+    b) The work must carry prominent notices stating that it is
+    released under this License and any conditions added under
+    Section 7.
+
+    c) Recipients must be given a copy of this License.
+
+  3. Object Code Incorporating Material from Library Header Files.
+
+  The object code form of an Application may incorporate material from
+a header file that is part of the Library.
+
+  4. Combined Works.
+
+  You may convey a Combined Work under terms of your choice that,
+taken together with the terms of this License, does not impose
+additional restrictions.
+
+  5. Combined Libraries.
+
+  You may place library facilities that are a work based on the
+Library side by side in a single library together with other library
+facilities that are not Applications and are not covered by this
+License, and convey such a combined library under terms of your
+choice, if you do both of the following:
+
+    a) Give prominent notice with the combined library that part of it
+    is a work based on the Library, and explaining where to find the
+    documentation for the License.
+
+    b) Enable a user who is in possession of the source code of the
+    Combined Library to do either (i) refuse to use the Library
+    facility, or (ii) use a version based on the Library that has had
+    the non-standard modifications removed.
+
+  6. Revised Versions of the GNU Lesser General Public License.
+
+  The Free Software Foundation may publish revised and/or new versions
+of the GNU Lesser General Public License from time to time. Such new
+versions will be similar in spirit to the present version.
+
+  If the Library as you received it specifies that a proxy can decide
+whether future versions of the GNU Lesser General Public License shall
+apply, that proxy's public statement of acceptance of any version is
+permanent authorization for you to choose that version for the
+Library.
+
+(See https://www.gnu.org/licenses/lgpl-3.0.html for the full text.)
+

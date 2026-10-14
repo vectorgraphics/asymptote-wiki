@@ -1,0 +1,40 @@
+
+{% extends "base.html" %}
+{% block title %}All Examples -- Asymptote Wiki{% endblock %}
+{% block content %}
+<h1>Examples</h1>
+<p class="subtitle">A community gallery of Asymptote figures. <a href="{{ url_for('new_page') }}">Contribute your own!</a></p>
+
+{% if pages %}
+<div class="gallery">
+    {% for page in pages %}
+    <div class="card">
+        <a href="{{ url_for('view_page', page_id=page['id']) }}" class="card-thumb">
+            {% if page.thumbnail %}
+                <img src="{{ page.thumbnail }}" alt="{{ page.title }}">
+            {% else %}
+                <div class="no-thumb">No preview</div>
+            {% endif %}
+        </a>
+        <div class="card-body">
+            <h3><a href="{{ url_for('view_page', page_id=page['id']) }}">{{ page.title }}</a></h3>
+            <p class="card-meta">
+                {% if page.author %}by {{ page.author }} &middot;{% endif %}
+                {{ page.created[:10] if page.created else '' }}
+            </p>
+            {% if page.tags %}
+            <div class="tags">
+                {% for tag in page.tags %}
+                <span class="tag">{{ tag }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="empty">No examples yet. <a href="{{ url_for('new_page') }}">Be the first to contribute!</a></p>
+{% endif %}
+{% endblock %}
+

@@ -1,0 +1,49 @@
+
+{% extends "base.html" %}
+{% block title %}{{ page.title }} - Asymptote Wiki{% endblock %}
+{% block content %}
+<article class="example-page">
+    <header class="page-header">
+        <h1>{{ page.title }}</h1>
+        <p class="page-meta">
+            {% if page.author %}Submitted by <strong>{{ page.author }}</strong> &middot;{% endif %}
+            {{ page.created[:10] if page.created else '' }}
+            {% if page.modified and page.modified != page.created %}
+                (updated {{ page.modified[:10] }})
+            {% endif %}
+        </p>
+        {% if page.tags %}
+        <div class="tags">
+            {% for tag in page.tags %}
+            <span class="tag">{{ tag }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </header>
+
+    <div class="page-content">
+        {{ content_html | safe }}
+    </div>
+
+    <section class="source-files">
+        <h2>Source Files</h2>
+        <ul>
+            {% for f in source_files %}
+            <li>
+                <a href="{{ url_for('serve_source', page_id=page_id, filename=f) }}">{{ f }}</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    <div class="page-actions">
+        <a href="{{ url_for('edit_page', page_id=page_id) }}" class="btn">Edit</a>
+        <form method="post" action="{{ url_for('delete_page_route', page_id=page_id) }}"
+              onsubmit="return confirm('Delete this example? This cannot be undone.');">
+            <button type="submit" class="btn btn-danger">Delete</button>
+        </form>
+        <a href="{{ url_for('index') }}" class="btn">Back to all examples</a>
+    </div>
+</article>
+{% endblock %}
+

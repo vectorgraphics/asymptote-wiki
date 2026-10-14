@@ -1,0 +1,80 @@
+
+{% extends "base.html" %}
+{% block title %}
+  {% if page %}Edit: {{ page.title }}{% else %}New Example{% endif %}
+  -- Asymptote Wiki
+{% endblock %}
+{% block content %}
+<h1>{% if page %}Edit Example{% else %}New Example{% endif %}</h1>
+
+<form method="post" enctype="multipart/form-data"
+      action="{% if page %}{{ url_for('edit_page', page_id=page['id']) }}{% else %}{{ url_for('new_page') }}{% endif %}">
+
+    <div class="form-group">
+        <label for="title">Title *</label>
+        <input type="text" id="title" name="title" required
+               value="{{ page.title if page else '' }}"
+               placeholder="e.g. Three-Set Venn Diagram">
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label for="author">Your name</label>
+            <input type="text" id="author" name="author"
+                   value="{{ page.author if page and page.author else '' }}">
+        </div>
+        <div class="form-group">
+            <label for="email">Email (optional, not shown)</label>
+            <input type="email" id="email" name="email"
+                   value="{{ page.email if page and page.email else '' }}">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="tags">Tags (comma-separated)</label>
+        <input type="text" id="tags" name="tags"
+               value="{{ ','join(page.tags) if page and page.tags else '' }}"
+               placeholder="e.g. geometry, 3d, shading">
+    </div>
+
+    <div class="form-group">
+        <label>Asymptote source files</label>
+        <p class="hint">Upload one or more <code>.asy</code> files (and any data files they read).</p>
+        <input type="file" name="files" multiple accept=".asy,.txt,.csv,.dat">
+    </div>
+
+    <div class="form-group">
+        <label for="code">Or paste code</label>
+        <p class="hint">If you don't upload files, paste Asymptote code here (saved as <code>main.asy</code>).</p>
+        <textarea id="code" name="code" rows="12" class="code-input"
+                  placeholder="import graph;
+size(10cm);
+draw(unitcircle, red);
+draw(unitsquare, blue);">{{ '' }}</textarea>
+    </div>
+
+    <div class="form-group">
+        <label for="page_md">Page description (Markdown)</label>
+        <p class="hint">
+            Use <code>```asy:filename.asy</code> fences to embed rendered figures.
+            Example:
+        </p>
+        <pre class="hint-block">A simple diagram.
+
+```asy:main.asy
+```
+
+More explanation here.</pre>
+        <textarea id="page_md" name="page_md" rows="8" class="code-input">{{ page.page_md if page and page.page_md else '' }}</textarea>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">
+            {% if page %}Save &amp; Re-render{% else %}Submit &amp; Render{% endif %}
+        </button>
+        <a href="{% if page %}{{ url_for('view_page', page_id=page['id']) }}{% else %}{{ url_for('index') }}{% endif %}"
+           class="btn">Cancel</a>
+    </div>
+</form>
+{% endblock %}
+
