@@ -1,38 +1,42 @@
 
 """
-Asymptote rendering: invoke the asy binary with the page directory as CWD.
+Asymptote compilation: invoke the asy binary with the page directory as CWD.
 
 This handles multi-file examples naturally: if main.asy does
 input("data.txt") or import "helper", the files are found in the
 same directory.
+
+The default output format is "html": asy produces a self-contained
+HTML file with inline SVG for 2D or WebGL (asygl.js) for 3D,
+matching the Asymptote Web Application.
 """
 
 import subprocess
 from pathlib import Path
 
 
-class RenderError(Exception):
-    """Raised when Asymptote rendering fails."""
+class CompileError(Exception):
+    """Raised when Asymptote compilation fails."""
     pass
 
 
-def render_asy(
+def compile_asy(
     src_file: Path,
     out_file: Path,
-    fmt: str = "svg",
+    fmt: str = "html",
     timeout: int = 30,
     asy_binary: str = "asy",
     extra_args: list[str] | None = None,
 ) -> None:
     """
-    Render an .asy file to the given output format.
+    Compile an .asy file to the given output format.
 
     Parameters
     ----------
     src_file : Path to the .asy source file.
-    out_file : Path where the rendered output should be written.
-    fmt : Output format ("svg", "pdf", "html", "v3d", "eps", ...).
-    timeout : Max seconds to allow the render.
+    out_file : Path where the compiled output should be written.
+    fmt : Output format ("html" [default], "svg", "pdf", "v3d", "eps").
+    timeout : Max seconds to allow the compilation.
     asy_binary : Path to the asy executable.
     extra_args : Additional arguments passed to asy.
     """
@@ -41,7 +45,7 @@ def render_asy(
     out_file.parent.mkdir(parents=True, exist_ok=True)
 
     if not src_file.exists():
-        raise RenderError(f"Source file not found: {src_file}")
+        raise CompileError(f"Source file not found: {src_file}")
 
     cmd = [asy_binary, "-f", fmt, "-o", str(out_file), str(src_file)]
     if extra_args:
@@ -59,16 +63,20 @@ def render_asy(
             timeout=timeout,
         )
     except subprocess.TimeoutExpired:
-        raise RenderError(f"Render timed out after {timeout}s: {src_file.name}")
+        raise CompileError(
+            f"Compilation timed out after {timeout}s: {src_file.name}"
+        )
     except FileNotFoundError:
-        raise RenderError(f"asy binary not found: {asy_binary}. "
-                          f"Set ASY_BINARY to the correct path.")
+        raise CompileError(
+            f"asy binary not found: {asy_binary}. "
+            f"Set ASY_BINARY to the correct path."
+        )
 
     if result.returncode != 0:
         stderr = result.stderr.strip()
         if not stderr and result.stdout.strip():
             stderr = result.stdout.strip()
-        raise RenderError(
+        raise CompileError(
             f"asy exited with code {result.returncode} ({src_file.name}):\n{stderr}"
         )
 
@@ -81,7 +89,7 @@ def render_asy(
         if candidates:
             candidates[0].rename(out_file)
         else:
-            raise RenderError(
-                f"Render completed but output not found: {out_file}"
+            raise CompileError(
+                f"Compilation completed but output not found: {out_file}"
             )
 

@@ -12,7 +12,7 @@ Environment=ASY_BINARY=/usr/local/bin/asy
 Environment=WIKI_DATA_DIR=/var/lib/asymwiki
 Environment=WIKI_HOST=127.0.0.1
 Environment=WIKI_PORT=8080
-Environment=RENDER_TIMEOUT=30
+Environment=COMPILE_TIMEOUT=30
 Environment=MAX_SOURCE_SIZE=100000
 ExecStart=/opt/asymwiki/venv/bin/python /opt/asymwiki/app.py
 Restart=on-failure

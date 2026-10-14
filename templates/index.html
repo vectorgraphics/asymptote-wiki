@@ -11,7 +11,8 @@
     <div class="card">
         <a href="{{ url_for('view_page', page_id=page['id']) }}" class="card-thumb">
             {% if page.thumbnail %}
-                <img src="{{ page.thumbnail }}" alt="{{ page.title }}">
+                <iframe src="{{ page.thumbnail }}" class="thumb-frame"
+                        scrolling="no" tabindex="-1"></iframe>
             {% else %}
                 <div class="no-thumb">No preview</div>
             {% endif %}

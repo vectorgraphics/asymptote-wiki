@@ -36,13 +36,13 @@ def list_pages(pages_dir: Path) -> list[dict]:
         except (json.JSONDecodeError, OSError):
             continue
 
-        # Find a thumbnail (first .svg in render/)
-        render_dir = d / "render"
+        # Find a thumbnail (first .html in output/)
+        output_dir = d / "output"
         thumbnail = None
-        if render_dir.exists():
-            svgs = sorted(render_dir.glob("*.svg"))
-            if svgs:
-                thumbnail = f"/page/{d.name}/render/{svgs[0].name}"
+        if output_dir.exists():
+            htmls = sorted(output_dir.glob("*.html"))
+            if htmls:
+                thumbnail = f"/page/{d.name}/output/{htmls[0].name}"
         meta["thumbnail"] = thumbnail
         meta["id"] = d.name
         pages.append(meta)

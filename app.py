@@ -27,7 +27,7 @@ from flask import (
 )
 import markdown
 
-from wiki.render import render_asy
+from wiki.compile import compile_asy, CompileError
 from wiki.storage import (
     list_pages, get_page, save_page, delete_page, next_id
 )
@@ -39,7 +39,7 @@ PAGES_DIR = DATA_DIR / "pages"
 PAGES_DIR.mkdir(parents=True, exist_ok=True)
 
 ASY_BINARY = os.environ.get("ASY_BINARY", "asy")
-RENDER_TIMEOUT = int(os.environ.get("RENDER_TIMEOUT", "30"))
+COMPILE_TIMEOUT = int(os.environ.get("COMPILE_TIMEOUT", "30"))
 MAX_SOURCE_SIZE = int(os.environ.get("MAX_SOURCE_SIZE", "100_000"))
 
 # --- App setup -------------------------------------------------------------
@@ -64,58 +64,77 @@ ASY_FENCE_RE = re.compile(
 )
 
 
-def render_markdown_with_asy(md_text: str, page_dir: Path) -> str:
+def compile_markdown_with_asy(md_text: str, page_dir: Path) -> str:
     """
-    Render markdown, replacing ```asy:filename fences with the rendered output.
+    Process markdown, replacing ```asy:filename fences with the compiled output.
     The actual .asy source files live in page_dir; the fence content is
     displayed as collapsible source code.
+
+    Default output is "html" (SVG for 2D, WebGL for 3D), displayed in an
+    iframe -- the same approach as the Asymptote Web Application.
     """
     def replace_fence(m):
         filename = m.group("file")
-        fmt = m.group("fmt") or "svg"
+        fmt = m.group("fmt") or "html"
         code = m.group("code")
         src_file = page_dir / filename
 
-        # Determine render path
-        render_file = page_dir / "render" / f"{filename}.{fmt}"
-        if not render_file.exists():
-            # Render it
+        # Determine output path
+        out_file = page_dir / "output" / f"{filename}.{fmt}"
+        if not out_file.exists():
             try:
-                render_asy(
+                compile_asy(
                     src_file=src_file,
-                    out_file=render_file,
+                    out_file=out_file,
                     fmt=fmt,
-                    timeout=RENDER_TIMEOUT,
+                    timeout=COMPILE_TIMEOUT,
                     asy_binary=ASY_BINARY,
                 )
+            except CompileError as e:
+                return f"<pre class='compile-error'>Compile failed for {filename}:\n{e}</pre>"
             except Exception as e:
-                return f"<pre class='render-error'>Render failed for {filename}:\n{e}</pre>"
+                return f"<pre class='compile-error'>Error compiling {filename}:\n{e}</pre>"
 
-        # Build the HTML snippet
-        if fmt == "svg":
-            svg_content = render_file.read_text()
-            img_html = f"<div class='asy-render asy-svg'>{svg_content}</div>"
+        # Build the display: iframe for html, inline for svg, link for others
+        if fmt == "html":
+            url = url_for("serve_output", page_id=page_dir.name, filename=f"{filename}.html")
+            display_html = (
+                f"<div class='asy-output asy-html'>"
+                f"<iframe src='{url}' frameborder='0' "
+                f"style='width:100%;min-height:300px;border:1px solid #e5e7eb;"
+                f"border-radius:6px;'></iframe>"
+                f"<div class='asy-output-bar'>"
+                f"<a href='{url}' target='_blank'>Open fullscreen</a>"
+                f"</div></div>"
+            )
+        elif fmt == "svg":
+            svg_content = out_file.read_text()
+            display_html = f"<div class='asy-output asy-svg'>{svg_content}</div>"
         elif fmt == "pdf":
-            url = url_for("serve_render", page_id=page_dir.name, filename=f"{filename}.pdf")
-            img_html = f"<div class='asy-render asy-pdf'><iframe src='{url}' width='100%' height='400'></iframe></div>"
-        elif fmt in ("html", "v3d"):
-            url = url_for("serve_render", page_id=page_dir.name, filename=f"{filename}.{fmt}")
-            img_html = f"<div class='asy-render asy-html'><iframe src='{url}' width='100%' height='400'></iframe></div>"
+            url = url_for("serve_output", page_id=page_dir.name, filename=f"{filename}.pdf")
+            display_html = (
+                f"<div class='asy-output asy-pdf'>"
+                f"<iframe src='{url}' style='width:100%;height:400px;"
+                f"border:1px solid #e5e7eb;border-radius:6px;'></iframe></div>"
+            )
         else:
-            img_html = f"<p>[rendered {filename} as {fmt}]</p>"
+            url = url_for("serve_output", page_id=page_dir.name, filename=f"{filename}.{fmt}")
+            display_html = f"<p><a href='{url}'>Download {filename}.{fmt}</a></p>"
 
         # Collapsible source
         escaped_code = code.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        src_html = f"<details class='asy-source'><summary>View source ({filename})</summary><pre>{escaped_code}</pre></details>"
+        src_html = (
+            f"<details class='asy-source'>"
+            f"<summary>View source ({filename})</summary>"
+            f"<pre>{escaped_code}</pre></details>"
+        )
 
-        return img_html + src_html
+        return display_html + src_html
 
-    # Replace asy fences with rendered HTML
+    # Replace asy fences with compiled output
     html_with_asy = ASY_FENCE_RE.sub(replace_fence, md_text)
 
-    # Render the rest as markdown (but don't re-process the HTML we inserted)
-    # For MVP: render markdown first, then substitute. A more robust approach
-    # would use markdown extensions or a custom preprocessor.
+    # Process the rest as markdown
     rendered = markdown.markdown(html_with_asy, extensions=["fenced_code", "tables"])
     return rendered
 
@@ -140,7 +159,7 @@ def view_page(page_id):
     md_file = page_dir / "page.md"
     md_text = md_file.read_text() if md_file.exists() else ""
 
-    content_html = render_markdown_with_asy(md_text, page_dir)
+    content_html = compile_markdown_with_asy(md_text, page_dir)
 
     # List available source files
     source_files = [
@@ -167,10 +186,10 @@ def serve_source(page_id, filename):
     return send_from_directory(page_dir, filename)
 
 
-@app.route("/page/<page_id>/render/<filename>")
-def serve_render(page_id, filename):
-    """Serve rendered output (SVG, PDF, HTML, V3D)."""
-    page_dir = PAGES_DIR / page_id / "render"
+@app.route("/page/<page_id>/output/<filename>")
+def serve_output(page_id, filename):
+    """Serve compiled output (HTML, SVG, PDF, V3D)."""
+    page_dir = PAGES_DIR / page_id / "output"
     if not page_dir.exists():
         abort(404)
     return send_from_directory(page_dir, filename)
@@ -214,7 +233,7 @@ def new_page():
         page_id = next_id(PAGES_DIR)
         page_dir = PAGES_DIR / page_id
         page_dir.mkdir(parents=True)
-        (page_dir / "render").mkdir()
+        (page_dir / "output").mkdir()
 
         # Write files
         for name, data in files.items():
@@ -238,19 +257,19 @@ def new_page():
         }
         (page_dir / "meta.json").write_text(json.dumps(meta, indent=2))
 
-        # Render all .asy files (SVG by default)
+        # Compile all .asy files (HTML by default: SVG for 2D, WebGL for 3D)
         for name in files:
             if name.endswith(".asy"):
                 try:
-                    render_asy(
+                    compile_asy(
                         src_file=page_dir / name,
-                        out_file=page_dir / "render" / f"{name}.svg",
-                        fmt="svg",
-                        timeout=RENDER_TIMEOUT,
+                        out_file=page_dir / "output" / f"{name}.html",
+                        fmt="html",
+                        timeout=COMPILE_TIMEOUT,
                         asy_binary=ASY_BINARY,
                     )
                 except Exception as e:
-                    log.warning("Render failed for %s/%s: %s", page_id, name, e)
+                    log.warning("Compile failed for %s/%s: %s", page_id, name, e)
 
         log.info("Created page %s: %s", page_id, title)
         return redirect(url_for("view_page", page_id=page_id))
@@ -284,11 +303,11 @@ def edit_page(page_id):
                     return render_template("edit.html", page=page), 400
                 (page_dir / f.filename).write_bytes(data)
 
-        # Remove old renders and re-render
-        render_dir = page_dir / "render"
-        if render_dir.exists():
-            shutil.rmtree(render_dir)
-        render_dir.mkdir()
+        # Remove old output and recompile
+        output_dir = page_dir / "output"
+        if output_dir.exists():
+            shutil.rmtree(output_dir)
+        output_dir.mkdir()
 
         if md_text:
             (page_dir / "page.md").write_text(md_text)
@@ -304,15 +323,15 @@ def edit_page(page_id):
         for f in page_dir.iterdir():
             if f.suffix == ".asy":
                 try:
-                    render_asy(
+                    compile_asy(
                         src_file=f,
-                        out_file=render_dir / f"{f.name}.svg",
-                        fmt="svg",
-                        timeout=RENDER_TIMEOUT,
+                        out_file=output_dir / f"{f.name}.html",
+                        fmt="html",
+                        timeout=COMPILE_TIMEOUT,
                         asy_binary=ASY_BINARY,
                     )
                 except Exception as e:
-                    log.warning("Re-render failed for %s: %s", f.name, e)
+                    log.warning("Recompile failed for %s: %s", f.name, e)
 
         return redirect(url_for("view_page", page_id=page_id))
 
@@ -345,7 +364,9 @@ def not_found(e):
 if __name__ == "__main__":
     host = os.environ.get("WIKI_HOST", "127.0.0.1")
     port = int(os.environ.get("WIKI_PORT", "8080"))
-    log.info("Starting asymwiki on %s:%d (data: %s, asy: %s)",
-             host, port, DATA_DIR, ASY_BINARY)
+    log.info(
+        "Starting asymwiki on %s:%d (data: %s, asy: %s, timeout: %ds)",
+        host, port, DATA_DIR, ASY_BINARY, COMPILE_TIMEOUT,
+    )
     app.run(host=host, port=port, debug=os.environ.get("FLASK_DEBUG") == "1")
 

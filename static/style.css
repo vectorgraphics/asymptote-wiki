@@ -92,11 +92,11 @@ footer {
     justify-content: center;
     border-bottom: 1px solid var(--color-border);
 }
-.card-thumb img {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-    padding: 0.5rem;
+.thumb-frame {
+    width: 100%;
+    height: 100%;
+    border: none;
+    pointer-events: none;
 }
 .no-thumb { color: #9ca3af; font-style: italic; }
 
@@ -129,8 +129,8 @@ footer {
     padding: 1.5rem;
 }
 
-/* Asymptote render blocks */
-.asy-render {
+/* Asymptote output blocks */
+.asy-output {
     margin: 1rem 0;
     text-align: center;
     border: 1px solid var(--color-border);
@@ -139,9 +139,19 @@ footer {
     background: #fff;
 }
 .asy-svg svg { max-width: 100%; height: auto; }
-.asy-pdf iframe, .asy-html iframe {
+.asy-html iframe {
     border: none;
     display: block;
+}
+.asy-pdf iframe {
+    border: none;
+    display: block;
+}
+.asy-output-bar {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-code-bg);
 }
 
 .asy-source {
@@ -164,7 +174,7 @@ footer {
     line-height: 1.5;
 }
 
-.render-error {
+.compile-error {
     color: var(--color-danger);
     background: #fef2f2;
     border: 1px solid #fecaca;
