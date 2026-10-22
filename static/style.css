@@ -142,7 +142,7 @@ footer {
 
 /* Example page */
 .example-page { max-width: var(--max-width); }
-.page-header { margin-bottom: 1.5rem; }
+.page-header { margin-bottom: 1.5rem; display: flex; align-items: baseline; justify-content: space-between; }
 .page-header h1 { margin-bottom: 0.25rem; }
 .page-meta { color: #6b7280; font-size: 0.9rem; }
 
