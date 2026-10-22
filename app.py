@@ -395,8 +395,7 @@ def edit_page(page_rel):
                     return render_template("edit.html", page=page), 400
                 (page_dir / f.filename).write_bytes(data)
 
-        if md_text:
-            (page_dir / "page.md").write_text(md_text)
+        (page_dir / "page.md").write_text(md_text)
 
         meta_file = page_dir / "meta.json"
         meta = json.loads(meta_file.read_text())
