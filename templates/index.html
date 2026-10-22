@@ -46,7 +46,8 @@
     <div class="gallery-main">
         <h1>{% if current_cat %}{{ current_cat }}{% else %}Main Page{% endif %}</h1>
         <p class="subtitle">A community gallery of Asymptote examples and modules.
-        <a href="{{ url_for('new_page') }}">Contribute your own!</a></p>
+        <a href="{{ url_for('new_page') }}">Contribute your own!</a>
+        &middot; <a href="https://github.com/vectorgraphics/asymptote-wiki-data" target="_blank">Track changes on GitHub</a></p>
 
         {% if pages %}
         <div class="gallery">
