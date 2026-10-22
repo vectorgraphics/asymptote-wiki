@@ -32,12 +32,16 @@ from wiki.storage import (
     list_pages, get_page, save_meta, delete_page, move_page,
     next_id, category_tree
 )
+from wiki import gittrack
 
 # --- Configuration ---------------------------------------------------------
 
 DATA_DIR = Path(os.environ.get("WIKI_DATA_DIR", Path(__file__).parent / "data"))
 PAGES_DIR = DATA_DIR / "pages"
 PAGES_DIR.mkdir(parents=True, exist_ok=True)
+
+# Ensure git tracking is active on the pages directory
+gittrack.ensure_repo(PAGES_DIR)
 
 ASY_BINARY = os.environ.get("ASY_BINARY", "asy")
 COMPILE_TIMEOUT = int(os.environ.get("COMPILE_TIMEOUT", "30"))
@@ -351,6 +355,11 @@ def new_page():
 
         page_rel = str(page_dir.relative_to(PAGES_DIR))
         log.info("Created page %s: %s", page_rel, title)
+
+        # Git tracking
+        gittrack.commit_all(f"Add: {title}", PAGES_DIR)
+        gittrack.push(PAGES_DIR)
+
         return redirect(url_for("view_page", page_rel=page_rel))
 
     return render_template("edit.html", page=None, existing_files=[])
@@ -408,6 +417,10 @@ def edit_page(page_rel):
         # Recompile all .asy files
         _recompile_page(page_dir)
 
+        # Git tracking
+        gittrack.commit_all(f"Edit: {title}", PAGES_DIR)
+        gittrack.push(PAGES_DIR)
+
         return redirect(url_for("view_page", page_rel=page_rel))
 
     # GET: load current content for the form
@@ -425,8 +438,15 @@ def edit_page(page_rel):
 @app.route("/page/<path:page_rel>/delete", methods=["POST"])
 def delete_page_route(page_rel):
     """Delete a page."""
-    if delete_page(PAGES_DIR, page_rel):
-        flash("Page deleted.", "success")
+    page = get_page(PAGES_DIR, page_rel)
+    if page:
+        if delete_page(PAGES_DIR, page_rel):
+            flash("Page deleted.", "success")
+            # Git tracking
+            gittrack.commit_all(f"Delete: {page['title']}", PAGES_DIR)
+            gittrack.push(PAGES_DIR)
+        else:
+            flash("Page not found.", "error")
     else:
         flash("Page not found.", "error")
     return redirect(url_for("index"))
@@ -461,6 +481,10 @@ def add_file(page_rel):
     if safe_name.endswith(".asy"):
         _recompile_page(page_dir)
 
+    # Git tracking
+    gittrack.commit_all(f"Add file: {safe_name}", PAGES_DIR)
+    gittrack.push(PAGES_DIR)
+
     return redirect(url_for("view_page", page_rel=page_rel))
 
 
@@ -484,6 +508,10 @@ def remove_file(page_rel, filename):
             if out.exists():
                 out.unlink()
         flash(f"Deleted {safe_name}.", "success")
+
+        # Git tracking
+        gittrack.commit_all(f"Remove file: {safe_name}", PAGES_DIR)
+        gittrack.push(PAGES_DIR)
     else:
         flash(f"File {safe_name} not found.", "error")
 

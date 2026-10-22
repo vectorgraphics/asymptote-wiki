@@ -37,6 +37,39 @@ export ASY_BINARY=$(which asy)
 python app.py
 # -> http://localhost:8080
 ```
+## Git Tracking
+
+Every create, edit, delete, and file operation on pages is automatically
+committed to a git repository in `data/pages/`. This provides an audit trail
+and protects against accidental or malicious data loss -- any page can be
+restored from the git history at any time.
+
+Configuration (environment variables):
+
+| Variable         | Default                | Purpose                          |
+|------------------|------------------------|----------------------------------|
+| `WIKI_GIT_USER`  | `asywiki`              | Git author name for commits      |
+| `WIKI_GIT_EMAIL` | `asywiki@localhost`    | Git author email for commits     |
+| `GITHUB_REMOTE`  | *(unset)*              | Remote URL to push to (optional) |
+
+If `GITHUB_REMOTE` is set, the app will attempt `git push` after each commit
+(best-effort -- push failures are logged but do not affect the wiki).
+
+To inspect the history:
+
+```bash
+cd data/pages
+git log --oneline
+git show HEAD
+git diff HEAD~1
+```
+
+To restore a deleted page:
+
+```bash
+cd data/pages
+git checkout <commit> -- <path/to/page>
+```
 
 ## Storage
 
