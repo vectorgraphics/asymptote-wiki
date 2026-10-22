@@ -330,6 +330,7 @@ def serve_output(page_rel, filename):
 @app.route("/new", methods=["GET", "POST"])
 def new_page():
     """Create a new example page."""
+    default_cat = request.args.get("cat", "")
     if request.method == "POST":
         title = request.form.get("title", "").strip()
         author = request.form.get("author", "").strip()
@@ -339,7 +340,8 @@ def new_page():
 
         if not title:
             flash("Title is required.", "error")
-            return render_template("edit.html", page=None, existing_files=[]), 400
+            return render_template("edit.html", page=None, existing_files=[],
+                           default_cat=default_cat), 400
 
         # Collect uploaded files
         uploaded = request.files.getlist("files")
@@ -349,7 +351,8 @@ def new_page():
                 data = f.read()
                 if len(data) > MAX_SOURCE_SIZE:
                     flash(f"File {f.filename} exceeds max size.", "error")
-                    return render_template("edit.html", page=None, existing_files=[]), 400
+                    return render_template("edit.html", page=None, existing_files=[],
+                           default_cat=default_cat), 400
                 files[f.filename] = data
 
         # If no upload, check for pasted code
@@ -360,7 +363,8 @@ def new_page():
 
         if not files:
             flash("At least one .asy file or code is required.", "error")
-            return render_template("edit.html", page=None, existing_files=[]), 400
+            return render_template("edit.html", page=None, existing_files=[],
+                           default_cat=default_cat), 400
 
 
 
@@ -426,7 +430,8 @@ def new_page():
 
         return redirect(url_for("view_page", page_rel=page_rel))
 
-    return render_template("edit.html", page=None, existing_files=[])
+    return render_template("edit.html", page=None, existing_files=[],
+                           default_cat=default_cat)
 
 
 @app.route("/page/<path:page_rel>/edit", methods=["GET", "POST"])

@@ -30,7 +30,7 @@
         <div class="form-group">
             <label for="category">Category</label>
             <input type="text" id="category" name="category"
-                   value="{{ page.category if page else '' }}"
+                   value="{{ page.category if page else default_cat or '' }}"
                    placeholder="e.g. 3D/Surfaces">
             <p class="hint">Use / for nesting. Leave empty for unfiled.</p>
         </div>
