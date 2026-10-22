@@ -82,8 +82,8 @@ footer {
 .cat-tree a:hover { background: var(--color-code-bg); text-decoration: none; }
 .cat-tree a.active { background: var(--color-primary); color: #fff; }
 .gallery-main { min-width: 0; }
-.gallery-main h1 { margin-left: 1.5rem; }
-.subtitle-block { margin-bottom: 0.5rem; }
+.gallery-main h1 { text-align: center; }
+.subtitle-block { margin-bottom: 0.5rem; text-align: center; }
 .subtitle-block p { margin: 0; }
 
 @media (max-width: 700px) {
