@@ -364,8 +364,20 @@ def new_page():
 
 
         page_id = next_id(PAGES_DIR, title)
+        # Atomically claim the directory to prevent duplicates from
+        # double-submits. mkdir fails if the path already exists.
+        base_slug = page_id
         page_dir = PAGES_DIR / category / page_id if category else PAGES_DIR / page_id
-        page_dir.mkdir(parents=True)
+        n = 2
+        while True:
+            try:
+                page_dir.parent.mkdir(parents=True, exist_ok=True)
+                page_dir.mkdir()  # raises FileExistsError if taken
+                break
+            except FileExistsError:
+                page_id = f"{base_slug}-{n}"
+                page_dir = PAGES_DIR / category / page_id if category else PAGES_DIR / page_id
+                n += 1
         (page_dir / "output").mkdir()
 
         # Write files
