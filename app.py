@@ -80,6 +80,11 @@ if WIKI_PREFIX:
                 pass
         return response
 
+@app.context_processor
+def _inject_globals():
+    from flask import request as req
+    return {'current_cat': req.args.get('cat', '')}
+
 app.secret_key = os.environ.get("WIKI_SECRET", "dev-change-me")
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5 MB upload limit
 
