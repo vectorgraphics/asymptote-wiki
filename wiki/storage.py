@@ -218,3 +218,74 @@ def _slug_exists(pages_dir: Path, slug: str) -> bool:
         if d.is_dir() and (d / "meta.json").exists():
             return True
     return False
+
+
+def search_pages(pages_dir: Path, query: str) -> list[dict]:
+    """
+    Search pages by title, author, tags, and .asy source content.
+    Returns a list of (meta_dict, match_fields) where match_fields is a
+    list of strings describing where the match occurred (e.g. "title",
+    "tag: parametric", "source: main.asy").
+    """
+    query_lower = query.lower().strip()
+    if not query_lower:
+        return []
+
+    results = []
+    if not pages_dir.exists():
+        return results
+
+    for meta_file in sorted(pages_dir.rglob("meta.json")):
+        page_dir = meta_file.parent
+        try:
+            meta = json.loads(meta_file.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+
+        rel = page_dir.relative_to(pages_dir)
+        meta["id"] = page_dir.name
+        meta["rel_path"] = str(rel)
+        parts = rel.parts
+        meta["category"] = "/".join(parts[:-1]) if len(parts) > 1 else ""
+
+        # Thumbnail
+        output_dir = page_dir / "output"
+        thumbnail = None
+        if output_dir.exists():
+            htmls = sorted(output_dir.glob("*.html"))
+            if htmls:
+                thumbnail = f"/page/{meta['rel_path']}/output/{htmls[0].name}"
+        meta["thumbnail"] = thumbnail
+
+        match_fields = []
+
+        # Check title
+        title = meta.get("title", "")
+        if query_lower in title.lower():
+            match_fields.append("title")
+
+        # Check author
+        author = meta.get("author", "")
+        if author and query_lower in author.lower():
+            match_fields.append("author")
+
+        # Check tags
+        for tag in meta.get("tags", []):
+            if query_lower in tag.lower():
+                match_fields.append(f"tag: {tag}")
+
+        # Check .asy source files
+        for src in sorted(page_dir.iterdir()):
+            if src.suffix == ".asy" and src.is_file():
+                try:
+                    content = src.read_text(errors="replace")
+                    if query_lower in content.lower():
+                        match_fields.append(f"source: {src.name}")
+                except OSError:
+                    pass
+
+        if match_fields:
+            meta["match_fields"] = match_fields
+            results.append(meta)
+
+    return results

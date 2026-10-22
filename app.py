@@ -30,7 +30,7 @@ import markdown
 from wiki.compile import compile_asy, CompileError
 from wiki.storage import (
     list_pages, get_page, save_meta, delete_page, move_page,
-    next_id, category_tree
+    next_id, category_tree, search_pages
 )
 from wiki import gittrack
 
@@ -225,6 +225,16 @@ def index():
     tree = category_tree(PAGES_DIR)
     return render_template("index.html", pages=pages, tree=tree,
                            current_cat=cat_filter)
+
+
+@app.route("/search")
+def search():
+    """Search pages by title, author, tags, or source content."""
+    query = request.args.get("q", "").strip()
+    pages = search_pages(PAGES_DIR, query) if query else []
+    tree = category_tree(PAGES_DIR)
+    return render_template("index.html", pages=pages, tree=tree,
+                           current_cat="", search_query=query)
 
 
 @app.route("/page/<path:page_rel>")

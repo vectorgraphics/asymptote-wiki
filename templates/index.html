@@ -1,9 +1,16 @@
 
 {% extends "base.html" %}
-{% block title %}Main Page -- Asymptote Wiki{% endblock %}
+{% block title %}
+{% if search_query %}Search: {{ search_query }}{% elif current_cat %}{{ current_cat }}{% else %}Main Page{% endif %} -- Asymptote Wiki{% endblock %}
 {% block content %}
 <div class="index-layout">
     <aside class="sidebar">
+        <form action="{{ url_for('search') }}" method="get" class="search-form">
+            <input type="text" name="q" placeholder="Search examples..."
+                   value="{{ search_query or '' }}" autofocus>
+            <button type="submit" class="btn btn-sm">Search</button>
+        </form>
+
         <h2>Categories</h2>
         {% if tree %}
         <ul class="cat-tree">
@@ -44,10 +51,15 @@
     </aside>
 
     <div class="gallery-main">
+        {% if search_query %}
+        <h1>Search results for "{{ search_query }}"</h1>
+        <p class="subtitle">{{ pages|length }} match{{ 'es' if pages|length != 1 }}</p>
+        {% else %}
         <h1>{% if current_cat %}{{ current_cat }}{% else %}Main Page{% endif %}</h1>
         <p class="subtitle">A community gallery of Asymptote examples and modules.
         <a href="{{ url_for('new_page') }}">Contribute your own!</a>
         &middot; <a href="https://github.com/vectorgraphics/asymptote-wiki-data" target="_blank">Track changes on GitHub</a></p>
+        {% endif %}
 
         {% if pages %}
         <div class="gallery">
@@ -74,10 +86,17 @@
                         {% endfor %}
                     </div>
                     {% endif %}
+                    {% if page.match_fields %}
+                    <p class="match-info">
+                        Matched: {% for m in page.match_fields %}{{ m }}{% if not loop.last %}, {% endif %}{% endfor %}
+                    </p>
+                    {% endif %}
                 </div>
             </div>
             {% endfor %}
         </div>
+        {% elif search_query %}
+        <p class="no-results">No pages matched your search. Try a different term.</p>
         {% endif %}
     </div>
 </div>
