@@ -15,6 +15,7 @@ Configuration via environment variables:
 
 import os
 import re
+import hashlib
 import json
 import shutil
 import logging
@@ -364,6 +365,20 @@ def new_page():
 
 
         page_id = next_id(PAGES_DIR, title)
+        # Dedup: if an identical page already exists, redirect to it
+        file_hash = hashlib.sha256()
+        for name in sorted(files):
+            file_hash.update(name.encode())
+            file_hash.update(files[name])
+        file_hash.update(title.encode())
+        file_hash.update(md_text.encode())
+        content_hash = file_hash.hexdigest()
+
+        for existing in list_pages(PAGES_DIR):
+            if existing.get("content_hash") == content_hash:
+                flash("This example already exists.", "success")
+                return redirect(url_for("view_page", page_rel=existing["rel_path"]))
+
         # Atomically claim the directory to prevent duplicates from
         # double-submits. mkdir fails if the path already exists.
         base_slug = page_id
@@ -395,6 +410,7 @@ def new_page():
             "tags": [t.strip() for t in tags.split(",") if t.strip()],
             "created": datetime.now(timezone.utc).isoformat(),
             "modified": datetime.now(timezone.utc).isoformat(),
+            "content_hash": content_hash,
         }
         (page_dir / "meta.json").write_text(json.dumps(meta, indent=2))
 
