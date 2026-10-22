@@ -72,7 +72,10 @@ def _do_compile(
     extra_args: list[str] | None,
 ) -> None:
     """Actually invoke asy to compile."""
-    cmd = [asy_binary, "-f", fmt, "-o", str(out_file), str(src_file)]
+    # -o specifies a prefix; asy appends the format extension.
+    # e.g. -o out/foo produces out/foo.html, out/foo.svg, etc.
+    prefix = out_file.with_suffix("")
+    cmd = [asy_binary, "-f", fmt, "-o", str(prefix), str(src_file)]
     if extra_args:
         cmd.extend(extra_args)
 
