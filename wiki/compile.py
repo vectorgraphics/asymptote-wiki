@@ -11,6 +11,7 @@ HTML file with inline SVG for 2D or WebGL (asygl.js) for 3D,
 matching the Asymptote Web Application.
 """
 
+import re
 import subprocess
 from pathlib import Path
 
@@ -47,6 +48,30 @@ def compile_asy(
     if not src_file.exists():
         raise CompileError(f"Source file not found: {src_file}")
 
+    # Strip settings that would override our output format.
+    # The wiki decides the format, not the user's source code.
+    source = src_file.read_text()
+    source = re.sub(
+        r"^\s*settings\.(outformat|prc|render)\s*=.*$",
+        "", source, flags=re.MULTILINE
+    )
+    tmp = src_file.parent / f".tmp_{src_file.name}"
+    tmp.write_text(source)
+    try:
+        _do_compile(tmp, out_file, fmt, timeout, asy_binary, extra_args)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+def _do_compile(
+    src_file: Path,
+    out_file: Path,
+    fmt: str,
+    timeout: int,
+    asy_binary: str,
+    extra_args: list[str] | None,
+) -> None:
+    """Actually invoke asy to compile."""
     cmd = [asy_binary, "-f", fmt, "-o", str(out_file), str(src_file)]
     if extra_args:
         cmd.extend(extra_args)
@@ -84,7 +109,6 @@ def compile_asy(
     # depending on format, so glob for it if the exact path is missing.
     if not out_file.exists():
         candidates = list(out_file.parent.glob(f"{src_file.stem}.*"))
-        # Filter out the source file itself and other .asy files
         candidates = [c for c in candidates if c.suffix != ".asy" and c != src_file]
         if candidates:
             candidates[0].rename(out_file)
