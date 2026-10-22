@@ -7,6 +7,13 @@
     <title>{% block title %}Asymptote Wiki{% endblock %}</title>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='asyicon.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+        onload="renderMathInElement(document.querySelector('main'),
+            {delimiters: [{left: '$$', right: '$$', display: true},
+                          {left: '$', right: '$', display: false}]});">
+    </script>
 </head>
 <body>
     <header>
