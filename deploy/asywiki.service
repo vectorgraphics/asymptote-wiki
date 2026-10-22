@@ -17,7 +17,7 @@ Environment=COMPILE_TIMEOUT=30
 Environment=MAX_SOURCE_SIZE=100000
 Environment=WIKI_PREFIX=/wiki
 Environment=WIKI_GIT_USER=asywiki
-Environment=WIKI_GIT_EMAIL=asywiki@ualberta.ca
+Environment=WIKI_GIT_EMAIL=asywiki@localhost
 Environment=GITHUB_REMOTE=git@github.com:vectorgraphics/asymptote-wiki-data.git
 ExecStart=/opt/asywiki/venv/bin/python /opt/asywiki/app.py
 RestartSec=1
