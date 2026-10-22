@@ -85,7 +85,11 @@ def _inject_globals():
     from flask import request as req
     return {'current_cat': req.args.get('cat', '')}
 
-app.secret_key = os.environ.get("WIKI_SECRET", "dev-change-me")
+if not os.environ.get("WIKI_SECRET"):
+    raise RuntimeError(
+        "WIKI_SECRET must be set (e.g. EnvironmentFile=/etc/asywiki/secret.env)"
+    )
+app.secret_key = os.environ["WIKI_SECRET"]
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5 MB upload limit
 
 logging.basicConfig(level=logging.INFO)
