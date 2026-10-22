@@ -361,8 +361,7 @@ def new_page():
             flash("At least one .asy file or code is required.", "error")
             return render_template("edit.html", page=None, existing_files=[]), 400
 
-        # Determine if user provided explicit markdown with fences
-        has_fences = bool(ASY_FENCE_RE.search(md_text)) if md_text else False
+
 
         page_id = next_id(PAGES_DIR, title)
         page_dir = PAGES_DIR / category / page_id if category else PAGES_DIR / page_id
@@ -373,11 +372,7 @@ def new_page():
         for name, data in files.items():
             (page_dir / name).write_bytes(data)
 
-        # Write page.md
-        # If user wrote explicit fences, keep as-is.
-        # Otherwise leave empty (auto-display will show all compiled files).
-        if not md_text or not has_fences:
-            md_text = ""
+        # Write page.md (user's description, may be empty)
         (page_dir / "page.md").write_text(md_text)
 
         # Write meta.json
