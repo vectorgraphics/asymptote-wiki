@@ -46,6 +46,10 @@ gittrack.ensure_repo(PAGES_DIR)
 ASY_BINARY = os.environ.get("ASY_BINARY", "asy")
 COMPILE_TIMEOUT = int(os.environ.get("COMPILE_TIMEOUT", "30"))
 MAX_SOURCE_SIZE = int(os.environ.get("MAX_SOURCE_SIZE", "100_000"))
+MAX_CONCURRENT_COMPILES = int(os.environ.get("MAX_CONCURRENT_COMPILES", "3"))
+
+import threading
+_compile_sem = threading.Semaphore(MAX_CONCURRENT_COMPILES)
 
 # --- App setup -------------------------------------------------------------
 
@@ -81,7 +85,34 @@ app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5 MB upload limit
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("asywiki")
 
+# --- Security ---------------------------------------------------------------
+
+from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
+csrf = CSRFProtect(app)
+limiter = Limiter(
+    key_func=get_remote_address,
+    app=app,
+    default_limits=["200/hour"],
+    storage_uri="memory://",
+)
+
+# Forbid debug mode in production (deployed under /wiki/ or with WIKI_HOST=0.0.0.0)
+if os.environ.get("WIKI_PREFIX") or os.environ.get("WIKI_HOST") == "0.0.0.0":
+    if os.environ.get("FLASK_DEBUG") == "1":
+        raise RuntimeError("FLASK_DEBUG must not be set in production")
+
 # --- Helpers ----------------------------------------------------------------
+
+def _safe_page_dir(page_rel: str) -> Path:
+    """Resolve a page relative path and ensure it stays within PAGES_DIR."""
+    page_dir = (PAGES_DIR / page_rel).resolve()
+    if not page_dir.is_relative_to(PAGES_DIR.resolve()):
+        abort(400, description="Invalid path")
+    return page_dir
+
 
 ASY_FENCE_RE = re.compile(
     r"```asy:(?P<file>[\w.\-]+)(?:\?f=(?P<fmt>\w+))?\s*\n(?P<code>.*?)```",
@@ -155,13 +186,15 @@ def compile_markdown_with_asy(md_text: str, page_dir: Path) -> str:
         out_file = page_dir / "output" / f"{filename}.{fmt}"
         if not out_file.exists():
             try:
-                compile_asy(
-                    src_file=src_file,
-                    out_file=out_file,
-                    fmt=fmt,
-                    timeout=COMPILE_TIMEOUT,
-                    asy_binary=ASY_BINARY,
-                )
+                with _compile_sem:
+                    compile_asy(
+                        src_file=src_file,
+                        out_file=out_file,
+                        fmt=fmt,
+                        timeout=COMPILE_TIMEOUT,
+                        asy_binary=ASY_BINARY,
+                        extra_args=["-noglobalread"],
+                    )
             except CompileError as e:
                 return f"<pre class='compile-error'>Compile failed for {filename}:\n{e}</pre>"
             except Exception as e:
@@ -244,7 +277,7 @@ def view_page(page_rel):
     if page is None:
         abort(404)
 
-    page_dir = PAGES_DIR / page_rel
+    page_dir = _safe_page_dir(page_rel)
     md_file = page_dir / "page.md"
     md_text = md_file.read_text() if md_file.exists() else ""
 
@@ -278,7 +311,7 @@ def view_page(page_rel):
 @app.route("/page/<path:page_rel>/raw/<filename>")
 def serve_source(page_rel, filename):
     """Serve raw source file."""
-    page_dir = PAGES_DIR / page_rel
+    page_dir = _safe_page_dir(page_rel)
     if not page_dir.exists():
         abort(404)
     return send_from_directory(page_dir, filename)
@@ -287,7 +320,7 @@ def serve_source(page_rel, filename):
 @app.route("/page/<path:page_rel>/output/<filename>")
 def serve_output(page_rel, filename):
     """Serve compiled output (HTML, SVG, PDF, V3D)."""
-    page_dir = PAGES_DIR / page_rel / "output"
+    page_dir = _safe_page_dir(page_rel) / "output"
     if not page_dir.exists():
         abort(404)
     return send_from_directory(page_dir, filename)
@@ -381,7 +414,7 @@ def edit_page(page_rel):
         abort(404)
 
     if request.method == "POST":
-        page_dir = PAGES_DIR / page_rel
+        page_dir = _safe_page_dir(page_rel)
 
         # Update metadata
         title = request.form.get("title", page["title"]).strip()
@@ -432,7 +465,7 @@ def edit_page(page_rel):
         return redirect(url_for("view_page", page_rel=page_rel))
 
     # GET: load current content for the form
-    page_dir = PAGES_DIR / page_rel
+    page_dir = _safe_page_dir(page_rel)
     md_text = (page_dir / "page.md").read_text() if (page_dir / "page.md").exists() else ""
     page["page_md"] = md_text
     existing_files = [
@@ -469,7 +502,7 @@ def add_file(page_rel):
     if page is None:
         abort(404)
 
-    page_dir = PAGES_DIR / page_rel
+    page_dir = _safe_page_dir(page_rel)
     uploaded = request.files.get("file")
     if not uploaded or not uploaded.filename:
         flash("No file uploaded.", "error")
@@ -503,7 +536,7 @@ def remove_file(page_rel, filename):
     if page is None:
         abort(404)
 
-    page_dir = PAGES_DIR / page_rel
+    page_dir = _safe_page_dir(page_rel)
     safe_name = Path(filename).name  # prevent path traversal
     target = page_dir / safe_name
 
@@ -536,15 +569,22 @@ def _recompile_page(page_dir: Path) -> None:
     for f in sorted(page_dir.iterdir()):
         if f.suffix == ".asy" and f.parent == page_dir:
             try:
-                compile_asy(
-                    src_file=f,
-                    out_file=output_dir / f"{f.name}.html",
-                    fmt="html",
-                    timeout=COMPILE_TIMEOUT,
-                    asy_binary=ASY_BINARY,
-                )
+                with _compile_sem:
+                    compile_asy(
+                        src_file=f,
+                        out_file=output_dir / f"{f.name}.html",
+                        fmt="html",
+                        timeout=COMPILE_TIMEOUT,
+                        asy_binary=ASY_BINARY,
+                        extra_args=["-noglobalread"],
+                    )
             except Exception as e:
                 log.warning("Compile failed for %s: %s", f.name, e)
+
+
+# Exempt file-serving routes from rate limiting (iframes load these frequently)
+limiter.exempt(serve_output)
+limiter.exempt(serve_source)
 
 
 # --- Error handlers ----------------------------------------------------------

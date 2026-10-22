@@ -16,6 +16,9 @@ Environment=WIKI_PORT=8080
 Environment=COMPILE_TIMEOUT=30
 Environment=MAX_SOURCE_SIZE=100000
 Environment=WIKI_PREFIX=/wiki
+# Generate with: python3 -c "import secrets; print(secrets.token_hex(32))"
+Environment=WIKI_SECRET=CHANGE_ME_to_random_hex
+Environment=MAX_CONCURRENT_COMPILES=3
 Environment=WIKI_GIT_USER=asywiki
 Environment=WIKI_GIT_EMAIL=asywiki@localhost
 Environment=GITHUB_REMOTE=git@github.com:vectorgraphics/asymptote-wiki-data.git

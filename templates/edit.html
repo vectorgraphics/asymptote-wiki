@@ -9,6 +9,7 @@
 
 <form method="post" enctype="multipart/form-data"
       action="{% if page %}{{ url_for('edit_page', page_rel=page['rel_path']) }}{% else %}{{ url_for('new_page') }}{% endif %}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
     <div class="form-group">
         <label for="title">Title *</label>

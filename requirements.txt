@@ -1,4 +1,6 @@
 flask>=3.0
 markdown>=3.5
 werkzeug>=3.0
+flask-limiter>=3.0
+flask-wtf>=1.2
 
