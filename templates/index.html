@@ -1,6 +1,6 @@
 
 {% extends "base.html" %}
-{% block title %}Examples -- Asymptote Wiki{% endblock %}
+{% block title %}Main Page -- Asymptote Wiki{% endblock %}
 {% block content %}
 <div class="index-layout">
     <aside class="sidebar">
@@ -39,12 +39,12 @@
         </ul>
         {% endif %}
         {% if current_cat %}
-        <p><a href="/">&larr; Main page</a></p>
+        <p><a href="/">&larr; Main Page</a></p>
         {% endif %}
     </aside>
 
     <div class="gallery-main">
-        <h1>{% if current_cat %}{{ current_cat }}{% else %}Examples{% endif %}</h1>
+        <h1>{% if current_cat %}{{ current_cat }}{% else %}Main Page{% endif %}</h1>
         <p class="subtitle">A community gallery of Asymptote examples and modules.
         <a href="{{ url_for('new_page') }}">Contribute your own!</a></p>
 
