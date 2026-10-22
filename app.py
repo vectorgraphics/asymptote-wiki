@@ -289,7 +289,6 @@ def new_page():
     if request.method == "POST":
         title = request.form.get("title", "").strip()
         author = request.form.get("author", "").strip()
-        email = request.form.get("email", "").strip()
         tags = request.form.get("tags", "").strip()
         category = request.form.get("category", "").strip().strip("/")
         md_text = request.form.get("page_md", "").strip()
@@ -343,7 +342,6 @@ def new_page():
             "id": page_id,
             "title": title,
             "author": author,
-            "email": email,
             "tags": [t.strip() for t in tags.split(",") if t.strip()],
             "created": datetime.now(timezone.utc).isoformat(),
             "modified": datetime.now(timezone.utc).isoformat(),
