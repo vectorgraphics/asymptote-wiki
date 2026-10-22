@@ -88,8 +88,6 @@ def compile_asy(
         candidates = [c for c in candidates if c.suffix != ".asy" and c != src_file]
         if candidates:
             candidates[0].rename(out_file)
-        else:
-            raise CompileError(
-                f"Compilation completed but output not found: {out_file}"
-            )
+        # No output produced: this is likely a module (no shipout()).
+        # That's fine -- the file is still available for imports.
 

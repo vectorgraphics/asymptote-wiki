@@ -29,7 +29,8 @@ import markdown
 
 from wiki.compile import compile_asy, CompileError
 from wiki.storage import (
-    list_pages, get_page, save_page, delete_page, next_id
+    list_pages, get_page, save_meta, delete_page, move_page,
+    next_id, category_tree
 )
 
 # --- Configuration ---------------------------------------------------------
@@ -45,23 +46,86 @@ MAX_SOURCE_SIZE = int(os.environ.get("MAX_SOURCE_SIZE", "100_000"))
 # --- App setup -------------------------------------------------------------
 
 app = Flask(__name__)
+WIKI_PREFIX = os.environ.get('WIKI_PREFIX', '')
+
+# When deployed under /wiki/, rewrite URL prefixes in HTML responses.
+# This is the most reliable approach -- no matter how Flask generates URLs,
+# we fix them at the output level.
+if WIKI_PREFIX:
+    @app.after_request
+    def _prefix_urls(response):
+        # Prefix redirect Location headers
+        loc = response.headers.get('Location', '')
+        if loc.startswith('/') and not loc.startswith(WIKI_PREFIX):
+            response.headers['Location'] = WIKI_PREFIX + loc
+        # Prefix URLs in HTML bodies
+        if response.content_type and 'text/html' in response.content_type:
+            try:
+                html = response.get_data(as_text=True)
+                for attr in ('href', 'src', 'action'):
+                    html = html.replace(f'{attr}="/', f'{attr}="{WIKI_PREFIX}/')
+                    html = html.replace(f"{attr}='/", f"{attr}='{WIKI_PREFIX}/")
+                html = html.replace(f'{WIKI_PREFIX}{WIKI_PREFIX}/', f'{WIKI_PREFIX}/')
+                response.set_data(html)
+            except RuntimeError:
+                pass
+        return response
+
 app.secret_key = os.environ.get("WIKI_SECRET", "dev-change-me")
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5 MB upload limit
 
 logging.basicConfig(level=logging.INFO)
-log = logging.getLogger("asymwiki")
+log = logging.getLogger("asywiki")
 
 # --- Helpers ----------------------------------------------------------------
 
 ASY_FENCE_RE = re.compile(
-    r"```asy:(?P<file>\S+)(?:\?f=(?P<fmt>\w+))?\n(?P<code>.*?)(?P=closing)```",
-    re.DOTALL
-)
-# Simpler: we match ```asy:filename  ...  ```
-ASY_FENCE_RE = re.compile(
     r"```asy:(?P<file>[\w.\-]+)(?:\?f=(?P<fmt>\w+))?\s*\n(?P<code>.*?)```",
     re.DOTALL
 )
+
+
+def _auto_display(page_dir: Path) -> str:
+    """
+    Auto-generate display HTML for all .asy files that have compiled output.
+    Used when page.md doesn't contain explicit ```asy: fences.
+    Modules (no output) are skipped automatically.
+    """
+    output_dir = page_dir / "output"
+    parts = []
+    if not output_dir.exists():
+        return ""
+
+    for html_file in sorted(output_dir.glob("*.html")):
+        # html_file is e.g. output/test.asy.html -> source is test.asy
+        src_name = html_file.name.removesuffix(".html")
+        src_file = page_dir / src_name
+
+        url = url_for("serve_output", page_rel=str(page_dir.relative_to(PAGES_DIR)), filename=html_file.name)
+        display = (
+            f"<div class='asy-output asy-html'>"
+            f"<h3>{src_name}</h3>"
+            f"<iframe src='{url}' frameborder='0' "
+            f"style='width:100%;min-height:300px;border:1px solid #e5e7eb;"
+            f"border-radius:6px;'></iframe>"
+            f"<div class='asy-output-bar'>"
+            f"<a href='{url}' target='_blank'>Open fullscreen</a>"
+            f"</div></div>"
+        )
+
+        # Collapsible source
+        if src_file.exists():
+            code = src_file.read_text(errors="replace")
+            escaped = code.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            display += (
+                f"<details class='asy-source'>"
+                f"<summary>View source ({src_name})</summary>"
+                f"<pre>{escaped}</pre></details>"
+            )
+
+        parts.append(display)
+
+    return "\n".join(parts)
 
 
 def compile_markdown_with_asy(md_text: str, page_dir: Path) -> str:
@@ -79,6 +143,10 @@ def compile_markdown_with_asy(md_text: str, page_dir: Path) -> str:
         code = m.group("code")
         src_file = page_dir / filename
 
+        # Skip if source file doesn't exist (e.g. referenced but not uploaded)
+        if not src_file.exists():
+            return ""
+
         # Determine output path
         out_file = page_dir / "output" / f"{filename}.{fmt}"
         if not out_file.exists():
@@ -95,9 +163,13 @@ def compile_markdown_with_asy(md_text: str, page_dir: Path) -> str:
             except Exception as e:
                 return f"<pre class='compile-error'>Error compiling {filename}:\n{e}</pre>"
 
+        # If no output was produced (e.g. a module with no shipout()), skip it
+        if not out_file.exists():
+            return ""
+
         # Build the display: iframe for html, inline for svg, link for others
         if fmt == "html":
-            url = url_for("serve_output", page_id=page_dir.name, filename=f"{filename}.html")
+            url = url_for("serve_output", page_rel=str(page_dir.relative_to(PAGES_DIR)), filename=f"{filename}.html")
             display_html = (
                 f"<div class='asy-output asy-html'>"
                 f"<iframe src='{url}' frameborder='0' "
@@ -111,14 +183,14 @@ def compile_markdown_with_asy(md_text: str, page_dir: Path) -> str:
             svg_content = out_file.read_text()
             display_html = f"<div class='asy-output asy-svg'>{svg_content}</div>"
         elif fmt == "pdf":
-            url = url_for("serve_output", page_id=page_dir.name, filename=f"{filename}.pdf")
+            url = url_for("serve_output", page_rel=str(page_dir.relative_to(PAGES_DIR)), filename=f"{filename}.pdf")
             display_html = (
                 f"<div class='asy-output asy-pdf'>"
                 f"<iframe src='{url}' style='width:100%;height:400px;"
                 f"border:1px solid #e5e7eb;border-radius:6px;'></iframe></div>"
             )
         else:
-            url = url_for("serve_output", page_id=page_dir.name, filename=f"{filename}.{fmt}")
+            url = url_for("serve_output", page_rel=str(page_dir.relative_to(PAGES_DIR)), filename=f"{filename}.{fmt}")
             display_html = f"<p><a href='{url}'>Download {filename}.{fmt}</a></p>"
 
         # Collapsible source
@@ -143,23 +215,35 @@ def compile_markdown_with_asy(md_text: str, page_dir: Path) -> str:
 
 @app.route("/")
 def index():
-    """Gallery listing of all pages."""
-    pages = list_pages(PAGES_DIR)
-    return render_template("index.html", pages=pages)
+    """Gallery listing of all pages, optionally filtered by category."""
+    cat_filter = request.args.get("cat", "")
+    pages = list_pages(PAGES_DIR, category=cat_filter)
+    tree = category_tree(PAGES_DIR)
+    return render_template("index.html", pages=pages, tree=tree,
+                           current_cat=cat_filter)
 
 
-@app.route("/page/<page_id>")
-def view_page(page_id):
-    """View a single example page."""
-    page = get_page(PAGES_DIR, page_id)
+@app.route("/page/<path:page_rel>")
+def view_page(page_rel):
+    """View a single example page. page_rel is like '3D/Surfaces/0001' or '0004'."""
+    page = get_page(PAGES_DIR, page_rel)
     if page is None:
         abort(404)
 
-    page_dir = PAGES_DIR / page_id
+    page_dir = PAGES_DIR / page_rel
     md_file = page_dir / "page.md"
     md_text = md_file.read_text() if md_file.exists() else ""
 
-    content_html = compile_markdown_with_asy(md_text, page_dir)
+    # If page.md has explicit asy fences, use them.
+    # Otherwise, auto-display all .asy files that produced output.
+    if ASY_FENCE_RE.search(md_text):
+        content_html = compile_markdown_with_asy(md_text, page_dir)
+    else:
+        content_html = _auto_display(page_dir)
+        # Still render any surrounding markdown prose
+        if md_text.strip():
+            prose_html = markdown.markdown(md_text, extensions=["fenced_code", "tables"])
+            content_html = prose_html + content_html
 
     # List available source files
     source_files = [
@@ -173,23 +257,23 @@ def view_page(page_id):
         page=page,
         content_html=content_html,
         source_files=source_files,
-        page_id=page_id,
+        page_rel=page_rel,
     )
 
 
-@app.route("/page/<page_id>/raw/<filename>")
-def serve_source(page_id, filename):
+@app.route("/page/<path:page_rel>/raw/<filename>")
+def serve_source(page_rel, filename):
     """Serve raw source file."""
-    page_dir = PAGES_DIR / page_id
+    page_dir = PAGES_DIR / page_rel
     if not page_dir.exists():
         abort(404)
     return send_from_directory(page_dir, filename)
 
 
-@app.route("/page/<page_id>/output/<filename>")
-def serve_output(page_id, filename):
+@app.route("/page/<path:page_rel>/output/<filename>")
+def serve_output(page_rel, filename):
     """Serve compiled output (HTML, SVG, PDF, V3D)."""
-    page_dir = PAGES_DIR / page_id / "output"
+    page_dir = PAGES_DIR / page_rel / "output"
     if not page_dir.exists():
         abort(404)
     return send_from_directory(page_dir, filename)
@@ -203,11 +287,12 @@ def new_page():
         author = request.form.get("author", "").strip()
         email = request.form.get("email", "").strip()
         tags = request.form.get("tags", "").strip()
+        category = request.form.get("category", "").strip().strip("/")
         md_text = request.form.get("page_md", "").strip()
 
         if not title:
             flash("Title is required.", "error")
-            return render_template("edit.html", page=None), 400
+            return render_template("edit.html", page=None, existing_files=[]), 400
 
         # Collect uploaded files
         uploaded = request.files.getlist("files")
@@ -217,7 +302,7 @@ def new_page():
                 data = f.read()
                 if len(data) > MAX_SOURCE_SIZE:
                     flash(f"File {f.filename} exceeds max size.", "error")
-                    return render_template("edit.html", page=None), 400
+                    return render_template("edit.html", page=None, existing_files=[]), 400
                 files[f.filename] = data
 
         # If no upload, check for pasted code
@@ -228,10 +313,13 @@ def new_page():
 
         if not files:
             flash("At least one .asy file or code is required.", "error")
-            return render_template("edit.html", page=None), 400
+            return render_template("edit.html", page=None, existing_files=[]), 400
 
-        page_id = next_id(PAGES_DIR)
-        page_dir = PAGES_DIR / page_id
+        # Determine if user provided explicit markdown with fences
+        has_fences = bool(ASY_FENCE_RE.search(md_text)) if md_text else False
+
+        page_id = next_id(PAGES_DIR, title)
+        page_dir = PAGES_DIR / category / page_id if category else PAGES_DIR / page_id
         page_dir.mkdir(parents=True)
         (page_dir / "output").mkdir()
 
@@ -239,10 +327,11 @@ def new_page():
         for name, data in files.items():
             (page_dir / name).write_bytes(data)
 
-        # Write page.md (use provided markdown or generate a default)
-        if not md_text:
-            main_file = next((n for n in files if n.endswith(".asy")), "main.asy")
-            md_text = f"# {title}\n\n```asy:{main_file}\n```\n"
+        # Write page.md
+        # If user wrote explicit fences, keep as-is.
+        # Otherwise leave empty (auto-display will show all compiled files).
+        if not md_text or not has_fences:
+            md_text = ""
         (page_dir / "page.md").write_text(md_text)
 
         # Write meta.json
@@ -257,41 +346,44 @@ def new_page():
         }
         (page_dir / "meta.json").write_text(json.dumps(meta, indent=2))
 
-        # Compile all .asy files (HTML by default: SVG for 2D, WebGL for 3D)
-        for name in files:
-            if name.endswith(".asy"):
-                try:
-                    compile_asy(
-                        src_file=page_dir / name,
-                        out_file=page_dir / "output" / f"{name}.html",
-                        fmt="html",
-                        timeout=COMPILE_TIMEOUT,
-                        asy_binary=ASY_BINARY,
-                    )
-                except Exception as e:
-                    log.warning("Compile failed for %s/%s: %s", page_id, name, e)
+        # Compile all .asy files (modules that produce no output are skipped)
+        _recompile_page(page_dir)
 
-        log.info("Created page %s: %s", page_id, title)
-        return redirect(url_for("view_page", page_id=page_id))
+        page_rel = str(page_dir.relative_to(PAGES_DIR))
+        log.info("Created page %s: %s", page_rel, title)
+        return redirect(url_for("view_page", page_rel=page_rel))
 
-    return render_template("edit.html", page=None)
+    return render_template("edit.html", page=None, existing_files=[])
 
 
-@app.route("/page/<page_id>/edit", methods=["GET", "POST"])
-def edit_page(page_id):
+@app.route("/page/<path:page_rel>/edit", methods=["GET", "POST"])
+def edit_page(page_rel):
     """Edit an existing page (MVP: replace files and re-render)."""
-    page = get_page(PAGES_DIR, page_id)
+    page = get_page(PAGES_DIR, page_rel)
     if page is None:
         abort(404)
 
     if request.method == "POST":
-        page_dir = PAGES_DIR / page_id
+        page_dir = PAGES_DIR / page_rel
 
         # Update metadata
         title = request.form.get("title", page["title"]).strip()
         author = request.form.get("author", page.get("author", "")).strip()
         tags = request.form.get("tags", ",".join(page.get("tags", []))).strip()
+        new_category = request.form.get("category", "").strip().strip("/")
         md_text = request.form.get("page_md", "").strip()
+
+        # Move page if category changed
+        old_category = page.get("category", "")
+        if new_category != old_category:
+            moved = move_page(PAGES_DIR, page_rel, new_category)
+            if moved:
+                page_rel = str((PAGES_DIR / new_category / page_dir.name).relative_to(PAGES_DIR)) if new_category else page_dir.name
+                page_dir = PAGES_DIR / page_rel
+                flash(f"Moved to {new_category or 'root'}.", "success")
+            else:
+                flash("Could not move (destination exists?).", "error")
+                return redirect(url_for("view_page", page_rel=page_rel))
 
         # Replace uploaded files
         uploaded = request.files.getlist("files")
@@ -302,12 +394,6 @@ def edit_page(page_id):
                     flash(f"File {f.filename} exceeds max size.", "error")
                     return render_template("edit.html", page=page), 400
                 (page_dir / f.filename).write_bytes(data)
-
-        # Remove old output and recompile
-        output_dir = page_dir / "output"
-        if output_dir.exists():
-            shutil.rmtree(output_dir)
-        output_dir.mkdir()
 
         if md_text:
             (page_dir / "page.md").write_text(md_text)
@@ -320,36 +406,110 @@ def edit_page(page_id):
         meta["modified"] = datetime.now(timezone.utc).isoformat()
         meta_file.write_text(json.dumps(meta, indent=2))
 
-        for f in page_dir.iterdir():
-            if f.suffix == ".asy":
-                try:
-                    compile_asy(
-                        src_file=f,
-                        out_file=output_dir / f"{f.name}.html",
-                        fmt="html",
-                        timeout=COMPILE_TIMEOUT,
-                        asy_binary=ASY_BINARY,
-                    )
-                except Exception as e:
-                    log.warning("Recompile failed for %s: %s", f.name, e)
+        # Recompile all .asy files
+        _recompile_page(page_dir)
 
-        return redirect(url_for("view_page", page_id=page_id))
+        return redirect(url_for("view_page", page_rel=page_rel))
 
     # GET: load current content for the form
-    page_dir = PAGES_DIR / page_id
+    page_dir = PAGES_DIR / page_rel
     md_text = (page_dir / "page.md").read_text() if (page_dir / "page.md").exists() else ""
     page["page_md"] = md_text
-    return render_template("edit.html", page=page)
+    existing_files = [
+        f.name for f in sorted(page_dir.iterdir())
+        if f.is_file() and f.suffix in (".asy", ".txt", ".csv", ".dat")
+        and f.parent == page_dir
+    ]
+    return render_template("edit.html", page=page, existing_files=existing_files)
 
 
-@app.route("/page/<page_id>/delete", methods=["POST"])
-def delete_page_route(page_id):
+@app.route("/page/<path:page_rel>/delete", methods=["POST"])
+def delete_page_route(page_rel):
     """Delete a page."""
-    if delete_page(PAGES_DIR, page_id):
+    if delete_page(PAGES_DIR, page_rel):
         flash("Page deleted.", "success")
     else:
         flash("Page not found.", "error")
     return redirect(url_for("index"))
+
+
+# --- File management (add/replace/delete individual files) --------------------
+
+@app.route("/page/<path:page_rel>/files", methods=["POST"])
+def add_file(page_rel):
+    """Add or replace a file on an existing page. Recompile afterwards."""
+    page = get_page(PAGES_DIR, page_rel)
+    if page is None:
+        abort(404)
+
+    page_dir = PAGES_DIR / page_rel
+    uploaded = request.files.get("file")
+    if not uploaded or not uploaded.filename:
+        flash("No file uploaded.", "error")
+        return redirect(url_for("view_page", page_rel=page_rel))
+
+    data = uploaded.read()
+    if len(data) > MAX_SOURCE_SIZE:
+        flash(f"File {uploaded.filename} exceeds max size.", "error")
+        return redirect(url_for("view_page", page_rel=page_rel))
+
+    # Sanitize filename (no path traversal)
+    safe_name = Path(uploaded.filename).name
+    (page_dir / safe_name).write_bytes(data)
+    flash(f"Saved {safe_name}.", "success")
+
+    # Recompile if it's an .asy file
+    if safe_name.endswith(".asy"):
+        _recompile_page(page_dir)
+
+    return redirect(url_for("view_page", page_rel=page_rel))
+
+
+@app.route("/page/<path:page_rel>/files/<filename>/delete", methods=["POST"])
+def remove_file(page_rel, filename):
+    """Delete a specific file from a page."""
+    page = get_page(PAGES_DIR, page_rel)
+    if page is None:
+        abort(404)
+
+    page_dir = PAGES_DIR / page_rel
+    safe_name = Path(filename).name  # prevent path traversal
+    target = page_dir / safe_name
+
+    if target.exists() and target.is_file() and safe_name not in ("page.md", "meta.json"):
+        target.unlink()
+        # Also remove its compiled output if present
+        output_dir = page_dir / "output"
+        for fmt in ("html", "svg", "pdf", "v3d", "eps"):
+            out = output_dir / f"{safe_name}.{fmt}"
+            if out.exists():
+                out.unlink()
+        flash(f"Deleted {safe_name}.", "success")
+    else:
+        flash(f"File {safe_name} not found.", "error")
+
+    return redirect(url_for("view_page", page_rel=page_rel))
+
+
+def _recompile_page(page_dir: Path) -> None:
+    """Clear output dir and recompile all .asy files in the page."""
+    output_dir = page_dir / "output"
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+    output_dir.mkdir()
+
+    for f in sorted(page_dir.iterdir()):
+        if f.suffix == ".asy" and f.parent == page_dir:
+            try:
+                compile_asy(
+                    src_file=f,
+                    out_file=output_dir / f"{f.name}.html",
+                    fmt="html",
+                    timeout=COMPILE_TIMEOUT,
+                    asy_binary=ASY_BINARY,
+                )
+            except Exception as e:
+                log.warning("Compile failed for %s: %s", f.name, e)
 
 
 # --- Error handlers ----------------------------------------------------------
@@ -365,7 +525,7 @@ if __name__ == "__main__":
     host = os.environ.get("WIKI_HOST", "127.0.0.1")
     port = int(os.environ.get("WIKI_PORT", "8080"))
     log.info(
-        "Starting asymwiki on %s:%d (data: %s, asy: %s, timeout: %ds)",
+        "Starting asywiki on %s:%d (data: %s, asy: %s, timeout: %ds)",
         host, port, DATA_DIR, ASY_BINARY, COMPILE_TIMEOUT,
     )
     app.run(host=host, port=port, debug=os.environ.get("FLASK_DEBUG") == "1")

@@ -1,41 +1,90 @@
 
 {% extends "base.html" %}
-{% block title %}All Examples -- Asymptote Wiki{% endblock %}
+{% block title %}Examples -- Asymptote Wiki{% endblock %}
 {% block content %}
-<h1>Examples</h1>
-<p class="subtitle">A community gallery of Asymptote figures. <a href="{{ url_for('new_page') }}">Contribute your own!</a></p>
+<div class="index-layout">
+    <aside class="sidebar">
+        <h2>Categories</h2>
+        {% if tree %}
+        <ul class="cat-tree">
+            {% for cat in tree %}
+            <li>
+                <a href="/?cat={{ cat.path }}"
+                   class="{% if current_cat == cat.path %}active{% endif %}">
+                    {{ cat.name }}
+                </a>
+                {% if cat.children %}
+                <ul>
+                    {% for sub in cat.children %}
+                    <li>
+                        <a href="/?cat={{ sub.path }}"
+                           class="{% if current_cat == sub.path %}active{% endif %}">
+                            {{ sub.name }}
+                        </a>
+                        {% if sub.children %}
+                        <ul>
+                            {% for subsub in sub.children %}
+                            <li><a href="/?cat={{ subsub.path }}"
+                                   class="{% if current_cat == subsub.path %}active{% endif %}">
+                                {{ subsub.name }}</a></li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% if current_cat %}
+        <p><a href="/">&larr; Main page</a></p>
+        {% endif %}
+    </aside>
 
-{% if pages %}
-<div class="gallery">
-    {% for page in pages %}
-    <div class="card">
-        <a href="{{ url_for('view_page', page_id=page['id']) }}" class="card-thumb">
-            {% if page.thumbnail %}
-                <iframe src="{{ page.thumbnail }}" class="thumb-frame"
-                        scrolling="no" tabindex="-1"></iframe>
-            {% else %}
-                <div class="no-thumb">No preview</div>
-            {% endif %}
-        </a>
-        <div class="card-body">
-            <h3><a href="{{ url_for('view_page', page_id=page['id']) }}">{{ page.title }}</a></h3>
-            <p class="card-meta">
-                {% if page.author %}by {{ page.author }} &middot;{% endif %}
-                {{ page.created[:10] if page.created else '' }}
-            </p>
-            {% if page.tags %}
-            <div class="tags">
-                {% for tag in page.tags %}
-                <span class="tag">{{ tag }}</span>
-                {% endfor %}
+    <div class="gallery-main">
+        <h1>{% if current_cat %}{{ current_cat }}{% else %}Examples{% endif %}</h1>
+        <p class="subtitle">A community gallery of Asymptote figures.
+        <a href="{{ url_for('new_page') }}">Contribute your own!</a></p>
+
+        {% if pages %}
+        <div class="gallery">
+            {% for page in pages %}
+            <div class="card">
+                <a href="{{ url_for('view_page', page_rel=page['rel_path']) }}" class="card-thumb">
+                    {% if page.thumbnail %}
+                        <iframe src="{{ page.thumbnail }}" class="thumb-frame"
+                                scrolling="no" tabindex="-1"></iframe>
+                    {% else %}
+                        <div class="no-thumb">No preview</div>
+                    {% endif %}
+                </a>
+                <div class="card-body">
+                    <h3><a href="{{ url_for('view_page', page_rel=page['rel_path']) }}">{{ page.title }}</a></h3>
+                    <p class="card-meta">
+                        {% if page.author %}by {{ page.author }} &middot;{% endif %}
+                        {{ page.created[:10] if page.created else '' }}
+                    </p>
+                    {% if page.tags %}
+                    <div class="tags">
+                        {% for tag in page.tags %}
+                        <span class="tag">{{ tag }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
             </div>
-            {% endif %}
+            {% endfor %}
         </div>
+        {% endif %}
     </div>
-    {% endfor %}
 </div>
-{% else %}
-<p class="empty">No examples yet. <a href="{{ url_for('new_page') }}">Be the first to contribute!</a></p>
-{% endif %}
+<script>
+// Focus iframe on hover so keyboard shortcuts work without clicking
+document.querySelectorAll('.thumb-frame').forEach(f => {
+    f.parentElement.addEventListener('mouseenter', () => f.contentWindow.focus());
+});
+</script>
 {% endblock %}
 

@@ -2,26 +2,23 @@
 [Unit]
 Description=Asymptote Wiki
 After=network.target
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
 User=asymptote
 Group=asymptote
-WorkingDirectory=/opt/asymwiki
+WorkingDirectory=/opt/asywiki
 Environment=ASY_BINARY=/usr/local/bin/asy
-Environment=WIKI_DATA_DIR=/var/lib/asymwiki
+Environment=WIKI_DATA_DIR=/var/lib/asywiki
 Environment=WIKI_HOST=127.0.0.1
 Environment=WIKI_PORT=8080
 Environment=COMPILE_TIMEOUT=30
 Environment=MAX_SOURCE_SIZE=100000
-ExecStart=/opt/asymwiki/venv/bin/python /opt/asymwiki/app.py
+Environment=WIKI_PREFIX=/wiki
+ExecStart=/opt/asywiki/venv/bin/python /opt/asywiki/app.py
+RestartSec=1
 Restart=on-failure
-RestartSec=5
-# Hardening
-NoNewPrivileges=true
-ProtectSystem=strict
-ReadWritePaths=/var/lib/asymwiki
-PrivateTmp=true
 
 [Install]
 WantedBy=multi-user.target

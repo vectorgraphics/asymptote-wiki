@@ -4,6 +4,7 @@
 {% block content %}
 <article class="example-page">
     <header class="page-header">
+        <a href="{{ url_for('index') }}" class="btn btn-sm">&larr; Main page</a>
         <h1>{{ page.title }}</h1>
         <p class="page-meta">
             {% if page.author %}Submitted by <strong>{{ page.author }}</strong> &middot;{% endif %}
@@ -27,23 +28,38 @@
 
     <section class="source-files">
         <h2>Source Files</h2>
-        <ul>
+        <ul class="file-list">
             {% for f in source_files %}
             <li>
-                <a href="{{ url_for('serve_source', page_id=page_id, filename=f) }}">{{ f }}</a>
+                <a href="{{ url_for('serve_source', page_rel=page_rel, filename=f) }}">{{ f }}</a>
+                <form method="post" action="{{ url_for('remove_file', page_rel=page_rel, filename=f) }}"
+                      class="inline-form"
+                      onsubmit="return confirm('Delete {{ f }}?');">
+                    <button type="submit" class="btn btn-sm btn-danger" title="Delete file">&times;</button>
+                </form>
             </li>
             {% endfor %}
         </ul>
+        <form method="post" action="{{ url_for('add_file', page_rel=page_rel) }}"
+              enctype="multipart/form-data" class="add-file-form">
+            <input type="file" name="file" accept=".asy,.txt,.csv,.dat" required>
+            <button type="submit" class="btn btn-sm">Add / Replace File</button>
+        </form>
     </section>
 
     <div class="page-actions">
-        <a href="{{ url_for('edit_page', page_id=page_id) }}" class="btn">Edit</a>
-        <form method="post" action="{{ url_for('delete_page_route', page_id=page_id) }}"
+        <a href="{{ url_for('edit_page', page_rel=page_rel) }}" class="btn">Edit</a>
+        <form method="post" action="{{ url_for('delete_page_route', page_rel=page_rel) }}"
               onsubmit="return confirm('Delete this example? This cannot be undone.');">
             <button type="submit" class="btn btn-danger">Delete</button>
         </form>
-        <a href="{{ url_for('index') }}" class="btn">Back to all examples</a>
+        <a href="{{ url_for('index') }}" class="btn">Back to main page</a>
     </div>
 </article>
+<script>
+document.querySelectorAll('.asy-html iframe').forEach(f => {
+    f.parentElement.addEventListener('mouseenter', () => f.contentWindow.focus());
+});
+</script>
 {% endblock %}
 

@@ -1,12 +1,25 @@
-""
+"""
 File-based storage for wiki pages.
 
-Each page is a directory under PAGES_DIR with a zero-padded numeric name:
-    0001-example-name/
-        meta.json
-        page.md
-        *.asy
-        render/
+Pages are organized in a directory tree under pages_dir. The directory
+path *is* the category:
+
+    pages/
+     3D/
+        Surfaces/
+           0001/
+              meta.json
+              page.md
+              main.asy
+              output/
+        Curves/
+            0002/
+     2D/
+        0003/
+     0004/          (unfiled -- no category)
+
+A "page" is any directory containing a meta.json.
+A "category" is any directory containing subdirectories.
 """
 
 import json
@@ -15,86 +28,193 @@ from pathlib import Path
 from typing import Optional
 
 
-def list_pages(pages_dir: Path) -> list[dict]:
+def list_pages(pages_dir: Path, category: str = "") -> list[dict]:
     """
-    Return a list of page metadata dicts, sorted by ID (newest last).
-    Each dict contains the contents of meta.json plus a 'thumbnail' key
-    (path to the first SVG render, if available).
+    Return a list of page metadata dicts.
+
+    If category is empty, list all pages (recursively).
+    If category is given (e.g. "3D/Surfaces"), list only pages in that
+    directory and its subdirectories.
+
+    Each dict contains meta.json contents plus:
+      - "id": the page directory name (e.g. "0001")
+      - "category": relative path from pages_dir (e.g. "3D/Surfaces")
+      - "thumbnail": path to first output HTML (or None)
     """
     pages = []
-    if not pages_dir.exists():
+    search_dir = pages_dir / category if category else pages_dir
+    if not search_dir.exists():
         return pages
 
-    for d in sorted(pages_dir.iterdir()):
-        if not d.is_dir():
-            continue
-        meta_file = d / "meta.json"
-        if not meta_file.exists():
-            continue
+    # List pages directly in this directory (not recursive).
+    # Use rglob only when a specific category is requested (to include
+    # subcategory pages when browsing a parent category).
+    if category:
+        meta_files = sorted(search_dir.rglob("meta.json"))
+    else:
+        meta_files = sorted(search_dir.glob("*/meta.json"))
+
+    for meta_file in meta_files:
+        page_dir = meta_file.parent
         try:
             meta = json.loads(meta_file.read_text())
         except (json.JSONDecodeError, OSError):
             continue
 
-        # Find a thumbnail (first .html in output/)
-        output_dir = d / "output"
+        # Category is the relative path of page_dir from pages_dir,
+        # excluding the page ID itself.
+        rel = page_dir.relative_to(pages_dir)
+        parts = rel.parts
+        meta["category"] = "/".join(parts[:-1]) if len(parts) > 1 else ""
+        meta["id"] = page_dir.name
+        meta["rel_path"] = str(rel)
+
+        # Thumbnail: first .html in output/
+        output_dir = page_dir / "output"
         thumbnail = None
         if output_dir.exists():
             htmls = sorted(output_dir.glob("*.html"))
             if htmls:
-                thumbnail = f"/page/{d.name}/output/{htmls[0].name}"
+                thumbnail = f"/page/{meta['rel_path']}/output/{htmls[0].name}"
         meta["thumbnail"] = thumbnail
-        meta["id"] = d.name
         pages.append(meta)
 
     return pages
 
 
-def get_page(pages_dir: Path, page_id: str) -> Optional[dict]:
-    """Return the meta.json for a page, or None if not found."""
-    meta_file = pages_dir / page_id / "meta.json"
+def category_tree(pages_dir: Path) -> list[dict]:
+    """
+    Build the category tree from the directory structure.
+    Returns a list of dicts: {"name": ..., "path": ..., "children": [...]}
+    Only directories that contain pages (directly or nested) are included.
+    """
+    def walk(d: Path, current_path: str) -> list[dict]:
+        entries = []
+        if not d.exists():
+            return entries
+        for sub in sorted(d.iterdir()):
+            if not sub.is_dir() or sub.name.startswith("."):
+                continue
+            sub_path = f"{current_path}/{sub.name}" if current_path else sub.name
+            # A directory is a category only if it contains subdirectories
+            # that are themselves pages or categories. A bare page directory
+            # (containing meta.json directly) is NOT a category.
+            # If this dir IS a page (has meta.json), it's not a category
+            if (sub / "meta.json").exists():
+                continue
+            subdirs = [f for f in sub.iterdir() if f.is_dir() and not f.name.startswith(".")]
+            # A category must contain at least one page (directly or nested)
+            if not any(f.rglob("meta.json") for f in subdirs):
+                continue
+            children = walk(sub, sub_path)
+            entry = {"name": sub.name, "path": sub_path}
+            if children:
+                entry["children"] = children
+            entries.append(entry)
+        return entries
+
+    return walk(pages_dir, "")
+
+
+def get_page(pages_dir: Path, rel_path: str) -> Optional[dict]:
+    """Return meta.json for a page given its relative path (e.g. '3D/Surfaces/0001')."""
+    meta_file = pages_dir / rel_path / "meta.json"
     if not meta_file.exists():
         return None
     try:
-        return json.loads(meta_file.read_text())
+        meta = json.loads(meta_file.read_text())
     except (json.JSONDecodeError, OSError):
         return None
+    meta["rel_path"] = rel_path
+    parts = Path(rel_path).parts
+    meta["category"] = "/".join(parts[:-1]) if len(parts) > 1 else ""
+    return meta
 
 
-def save_page(pages_dir: Path, page_id: str, meta: dict) -> None:
+def save_meta(pages_dir: Path, rel_path: str, meta: dict) -> None:
     """Write meta.json for a page."""
-    page_dir = pages_dir / page_id
+    page_dir = pages_dir / rel_path
     page_dir.mkdir(parents=True, exist_ok=True)
     (page_dir / "meta.json").write_text(json.dumps(meta, indent=2))
 
 
-def delete_page(pages_dir: Path, page_id: str) -> bool:
+def delete_page(pages_dir: Path, rel_path: str) -> bool:
     """Delete a page directory. Returns True if it existed."""
-    page_dir = pages_dir / page_id
+    page_dir = pages_dir / rel_path
     if page_dir.exists() and page_dir.is_dir():
-        # Safety: only delete directories that have a meta.json
         if (page_dir / "meta.json").exists():
             shutil.rmtree(page_dir)
+            # Clean up empty parent directories (but not pages_dir itself)
+            parent = page_dir.parent
+            while parent != pages_dir and parent.exists() and not any(
+                f.is_dir() and (f / "meta.json").exists() for f in parent.iterdir()
+            ) and not any(
+                f.is_dir() and any(f.rglob("meta.json")) for f in parent.iterdir()
+            ):
+                parent.rmdir()
+                parent = parent.parent
+            return True
+    return None
+
+
+def move_page(pages_dir: Path, old_rel: str, new_category: str) -> bool:
+    """
+    Move a page to a new category directory.
+    old_rel: current relative path (e.g. "2D/0003")
+    new_category: target category (e.g. "3D/Surfaces") or "" for root
+    """
+    old_dir = pages_dir / old_rel
+    if not old_dir.exists() or not (old_dir / "meta.json").exists():
+        return False
+
+    page_id = old_dir.name
+    new_dir = pages_dir / new_category / page_id if new_category else pages_dir / page_id
+    new_dir.parent.mkdir(parents=True, exist_ok=True)
+
+    if new_dir.exists():
+        return False  # conflict
+
+    shutil.move(str(old_dir), str(new_dir))
+
+    # Clean up empty old parent dirs
+    parent = old_dir.parent
+    while parent != pages_dir and parent.exists():
+        has_content = any(
+            f.is_dir() and any(f.rglob("meta.json")) for f in parent.iterdir()
+        )
+        if not has_content:
+            parent.rmdir()
+            parent = parent.parent
+        else:
+            break
+
+    return True
+
+
+def next_id(pages_dir: Path, title: str = "") -> str:
+    """Generate a page directory name from the title slug.
+    If the slug is already taken (anywhere), append -2, -3, etc.
+    """
+    import re
+    if title:
+        title = re.sub(r"\.asy$", "", title)  # strip extension if present
+        slug = re.sub(r"[^\w\s-]", "", title.lower()).strip()
+        slug = re.sub(r"[\s]+", "-", slug)[:40]
+    else:
+        slug = "untitled"
+    base = slug
+    n = 2
+    while _slug_exists(pages_dir, slug):
+        slug = f"{base}-{n}"
+        n += 1
+    return slug
+
+
+def _slug_exists(pages_dir: Path, slug: str) -> bool:
+    """Check if any page directory already uses this name."""
+    if not pages_dir.exists():
+        return False
+    for d in pages_dir.rglob(slug):
+        if d.is_dir() and (d / "meta.json").exists():
             return True
     return False
-
-
-def next_id(pages_dir: Path) -> str:
-    """
-    Generate the next zero-padded page ID (0001, 0002, ...).
-    Includes a slug from the title if provided via the module-level _slug.
-    For simplicity, just use numeric: 0001, 0002, ...
-    """
-    if not pages_dir.exists():
-        return "0001"
-
-    max_n = 0
-    for d in pages_dir.iterdir():
-        if d.is_dir() and d.name[:4].isdigit():
-            try:
-                n = int(d.name[:4])
-                max_n = max(max_n, n)
-            except ValueError:
-                pass
-
-    return f"{max_n + 1:04d}

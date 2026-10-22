@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Asymptote Wiki{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='asyicon.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -32,7 +33,7 @@
     <footer>
         <p>
             Powered by <a href="https://asymptote.sourceforge.io">Asymptote</a> &middot;
-            <a href="{{ url_for('index') }}">All examples</a>
+            <a href="{{ url_for('index') }}">Main page</a>
         </p>
     </footer>
 </body>

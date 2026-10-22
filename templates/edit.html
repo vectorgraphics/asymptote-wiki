@@ -8,7 +8,7 @@
 <h1>{% if page %}Edit Example{% else %}New Example{% endif %}</h1>
 
 <form method="post" enctype="multipart/form-data"
-      action="{% if page %}{{ url_for('edit_page', page_id=page['id']) }}{% else %}{{ url_for('new_page') }}{% endif %}">
+      action="{% if page %}{{ url_for('edit_page', page_rel=page['rel_path']) }}{% else %}{{ url_for('new_page') }}{% endif %}">
 
     <div class="form-group">
         <label for="title">Title *</label>
@@ -30,17 +30,29 @@
         </div>
     </div>
 
-    <div class="form-group">
-        <label for="tags">Tags (comma-separated)</label>
-        <input type="text" id="tags" name="tags"
-               value="{{ ','join(page.tags) if page and page.tags else '' }}"
-               placeholder="e.g. geometry, 3d, shading">
+    <div class="form-row">
+        <div class="form-group">
+            <label for="category">Category</label>
+            <input type="text" id="category" name="category"
+                   value="{{ page.category if page else '' }}"
+                   placeholder="e.g. 3D/Surfaces">
+            <p class="hint">Use / for nesting. Leave empty for unfiled.</p>
+        </div>
+        <div class="form-group">
+            <label for="tags">Tags (comma-separated)</label>
+            <input type="text" id="tags" name="tags"
+                   value="{{ ','.join(page.tags) if page and page.tags else '' }}"
+                   placeholder="e.g. geometry, shading">
+        </div>
     </div>
 
     <div class="form-group">
-        <label>Asymptote source files</label>
-        <p class="hint">Upload one or more <code>.asy</code> files (and any data files they read).</p>
-        <input type="file" name="files" multiple accept=".asy,.txt,.csv,.dat">
+        <label>Source files</label>
+        {% if existing_files %}
+        <p class="hint">Current files: {% for f in existing_files %}<code>{{ f }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</p>
+        {% endif %}
+        <input type="file" id="file-input" multiple accept=".asy,.txt,.csv,.dat">
+        <ul id="file-list" class="file-list"></ul>
     </div>
 
     <div class="form-group">
@@ -72,9 +84,70 @@ More explanation here.</pre>
         <button type="submit" class="btn btn-primary">
             {% if page %}Save &amp; Re-render{% else %}Submit &amp; Render{% endif %}
         </button>
-        <a href="{% if page %}{{ url_for('view_page', page_id=page['id']) }}{% else %}{{ url_for('index') }}{% endif %}"
+        <a href="{% if page %}{{ url_for('view_page', page_rel=page['rel_path']) }}{% else %}{{ url_for('index') }}{% endif %}"
            class="btn">Cancel</a>
     </div>
 </form>
+
+<script>
+// Accumulate file selections across multiple "Choose Files" clicks
+const form = document.querySelector('form');
+const input = document.getElementById('file-input');
+const list = document.getElementById('file-list');
+const pending = [];
+
+input.addEventListener('change', () => {
+    for (const f of input.files) {
+        if (!pending.some(p => p.name === f.name && p.size === f.size)) {
+            pending.push(f);
+        }
+    }
+    renderList();
+    input.value = '';
+});
+
+function renderList() {
+    list.innerHTML = '';
+    for (let i = 0; i < pending.length; i++) {
+        const li = document.createElement('li');
+        const span = document.createElement('span');
+        span.textContent = pending[i].name;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-sm btn-danger';
+        btn.textContent = '\u00d7';
+        btn.title = 'Remove';
+        btn.onclick = () => { pending.splice(i, 1); renderList(); };
+        li.appendChild(span);
+        li.appendChild(btn);
+        list.appendChild(li);
+    }
+}
+
+// Submit via fetch so we can include accumulated files in FormData
+form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const fd = new FormData();
+    // Collect all non-file fields
+    for (const el of form.elements) {
+        if (el.name && el.type !== 'file') {
+            fd.append(el.name, el.value);
+        }
+    }
+    // Add all accumulated files
+    for (const f of pending) {
+        fd.append('files', f);
+    }
+    fetch(form.action, { method: 'POST', body: fd, redirect: 'follow' })
+        .then(r => {
+            if (r.ok || r.redirected) {
+                window.location.href = r.url || form.action;
+            } else {
+                return r.text().then(t => { alert('Error (' + r.status + '): ' + t.slice(0, 300)); });
+            }
+        })
+        .catch(err => alert('Submit failed: ' + err));
+});
+</script>
 {% endblock %}
 
