@@ -136,7 +136,7 @@ asy -f html -o output/main.asy.html main.asy
 
 Other formats (`svg`, `pdf`, `v3d`, `eps`) can be requested per-fence
 with ` ```asy:main.asy?f=svg `.
-Compile timeout defaults to 30 s (production uses 300 s for complex 3D scenes). Max source size 100 KB per file.
+Compile timeout defaults to 30 s (production uses 120 s). Max source size 100 KB per file.
 
 ## License
 
