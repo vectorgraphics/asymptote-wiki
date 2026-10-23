@@ -767,7 +767,7 @@ def _recompile_page(page_dir: Path) -> None:
     output_dir.mkdir()
 
     for f in sorted(page_dir.iterdir()):
-        if f.suffix == ".asy" and f.parent == page_dir:
+        if f.suffix == ".asy" and f.parent == page_dir and not f.name.startswith("."):
             try:
                 with _compile_sem:
                     compile_asy(
