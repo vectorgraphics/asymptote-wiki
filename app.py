@@ -104,6 +104,14 @@ log = logging.getLogger("asywiki")
 
 # --- Security ---------------------------------------------------------------
 
+from werkzeug.middleware.proxy_fix import ProxyFix
+
+# The wiki runs behind nginx (single trusted proxy), which sets
+# X-Forwarded-For/Proto/Host. Without ProxyFix every client appears as
+# 127.0.0.1: the rate limiter would share one global pool and per-IP
+# limits would be meaningless.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -115,6 +123,7 @@ limiter = Limiter(
     default_limits=["200/hour"],
     storage_uri="memory://",
 )
+app.config["SESSION_COOKIE_SECURE"] = True
 
 # Forbid debug mode in production (deployed under /wiki/ or with WIKI_HOST=0.0.0.0)
 if os.environ.get("WIKI_PREFIX") or os.environ.get("WIKI_HOST") == "0.0.0.0":
