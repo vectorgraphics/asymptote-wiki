@@ -353,8 +353,6 @@ footer {
     font-size: 0.85rem;
     color: #2563eb;
 }
-.md-hint { margin-top: 0.5rem; font-size: 0.85rem; color: #6b7280; }
-.md-hint summary { cursor: pointer; }
 
 /* Search */
 .search-form {
