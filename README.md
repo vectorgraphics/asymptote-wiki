@@ -140,5 +140,5 @@ Compile timeout defaults to 30 s. Max source size 100 KB per file.
 
 ## License
 
-GNU Lesser General Public License, version 3 or later (same as Asymptote).
+Apache License 2.0
 
