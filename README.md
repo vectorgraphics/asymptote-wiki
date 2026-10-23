@@ -34,6 +34,9 @@ pip install -r requirements.txt
 # Point the app at your asy installation:
 export ASY_BINARY=$(which asy)
 
+# Set a session/CSRF secret (required):
+export WIKI_SECRET=$(python3 -c "import secrets; print(secrets.token_hex(32))")
+
 python app.py
 # -> http://localhost:8080
 ```
@@ -71,6 +74,26 @@ cd data/pages
 git checkout <commit> -- <path/to/page>
 ```
 
+The data repo is public: [vectorgraphics/asymptote-wiki-data](https://github.com/vectorgraphics/asymptote-wiki-data).
+Users can subscribe to commits or diff versions of any example's source.
+
+## Search
+
+The sidebar search box matches against page titles, author names, tags,
+and the text content of all `.asy` source files. Results show which field
+matched (e.g. "Matched: tag: parametric, source: main.asy").
+
+## Security
+
+- **CSRF protection** -- all POST forms require a token (Flask-WTF)
+- **Rate limiting** -- 200 requests/hour per IP (Flask-Limiter); file-serving
+  routes are exempt
+- **Path traversal** -- all page paths are validated to stay within `data/pages/`
+- **Compile sandbox** -- `asy` runs with `-noglobalread`; at most 3 concurrent
+  compilations (configurable via `MAX_CONCURRENT_COMPILES`)
+- **Debug mode** -- forbidden in production (raises at startup if enabled)
+- **Secret** -- `WIKI_SECRET` must be set; known defaults are rejected in production
+
 ## Storage
 
 Pages are stored as plain directories under `data/pages/`:
@@ -79,16 +102,17 @@ Pages are stored as plain directories under `data/pages/`:
 data/pages/
  0001-example-name/
      page.md        # markdown with ```asy:filename.asy fences
-     meta.json      # {title, author, email, date, tags}
+     meta.json      # {title, author, date, tags}
      main.asy       # source files
      helper.asy
      data.txt       # optional non-asy data files
-     output/        # compiled HTML (inline SVG for 2D, WebGL for 3D)
+     output/        # compiled HTML (gitignored -- build artifact)
          main.asy.html
          helper.asy.html
 ```
 
-No database required. Back up by copying `data/`.
+No database required. Back up by copying `data/` (the git repo in
+`data/pages/` already tracks source files and provides history).
 
 ## Deployment (production)
 
