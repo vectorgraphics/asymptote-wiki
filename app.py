@@ -122,6 +122,9 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
 csrf = CSRFProtect(app)
+# Disable referrer check on HTTPS -- the token check is sufficient for CSRF
+# protection and the referrer requirement breaks non-browser clients.
+app.config["WTF_CSRF_SSL_STRICT"] = False
 limiter = Limiter(
     key_func=get_remote_address,
     app=app,
