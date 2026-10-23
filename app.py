@@ -121,7 +121,38 @@ def _safe_page_dir(page_rel: str) -> Path:
     page_dir = (PAGES_DIR / page_rel).resolve()
     if not page_dir.is_relative_to(PAGES_DIR.resolve()):
         abort(400, description="Invalid path")
+    if any(part.startswith(".") for part in page_dir.relative_to(PAGES_DIR.resolve()).parts):
+        abort(400, description="Invalid path")
     return page_dir
+
+
+# Extensions the wiki accepts for uploads. The accept= attribute in the forms
+# is client-side only; this is enforced server-side in every upload handler.
+ALLOWED_UPLOAD_EXTENSIONS = (".asy", ".txt", ".csv", ".dat")
+
+
+def _safe_upload_name(filename: str) -> str | None:
+    """
+    Reduce an uploaded filename to a safe basename, stripping any path
+    the client sent ("../evil.asy" -> "evil.asy").
+
+    Returns None if the result is empty, a dotfile, or its extension is
+    not in ALLOWED_UPLOAD_EXTENSIONS.
+    """
+    name = Path(filename).name
+    if not name or name.startswith("."):
+        return None
+    if Path(name).suffix.lower() not in ALLOWED_UPLOAD_EXTENSIONS:
+        return None
+    return name
+
+
+def _write_upload(page_dir: Path, name: str, data: bytes) -> None:
+    """Write an uploaded file into page_dir, refusing to escape the directory."""
+    target = (page_dir / name).resolve()
+    if not target.is_relative_to(page_dir.resolve()):
+        abort(400, description="Invalid filename")
+    target.write_bytes(data)
 
 
 ASY_FENCE_RE = re.compile(
@@ -357,12 +388,19 @@ def new_page():
         files = {}
         for f in uploaded:
             if f.filename:
-                data = f.read()
-                if len(data) > MAX_SOURCE_SIZE:
-                    flash(f"File {f.filename} exceeds max size.", "error")
+                safe_name = _safe_upload_name(f.filename)
+                if safe_name is None:
+                    flash(f"File '{f.filename}' was not accepted: use a plain "
+                          f"filename with one of these extensions: "
+                          f"{', '.join(ALLOWED_UPLOAD_EXTENSIONS)}.", "error")
                     return render_template("edit.html", page=None, existing_files=[],
                            default_cat=default_cat), 400
-                files[f.filename] = data
+                data = f.read()
+                if len(data) > MAX_SOURCE_SIZE:
+                    flash(f"File {safe_name} exceeds max size.", "error")
+                    return render_template("edit.html", page=None, existing_files=[],
+                           default_cat=default_cat), 400
+                files[safe_name] = data
 
         # If no upload, check for pasted code
         if not files:
@@ -410,7 +448,7 @@ def new_page():
 
         # Write files
         for name, data in files.items():
-            (page_dir / name).write_bytes(data)
+            _write_upload(page_dir, name, data)
 
         # Write page.md (user's description, may be empty)
         (page_dir / "page.md").write_text(md_text)
@@ -476,11 +514,17 @@ def edit_page(page_rel):
         uploaded = request.files.getlist("files")
         for f in uploaded:
             if f.filename:
+                safe_name = _safe_upload_name(f.filename)
+                if safe_name is None:
+                    flash(f"File '{f.filename}' was not accepted: use a plain "
+                          f"filename with one of these extensions: "
+                          f"{', '.join(ALLOWED_UPLOAD_EXTENSIONS)}.", "error")
+                    return render_template("edit.html", page=page), 400
                 data = f.read()
                 if len(data) > MAX_SOURCE_SIZE:
-                    flash(f"File {f.filename} exceeds max size.", "error")
+                    flash(f"File {safe_name} exceeds max size.", "error")
                     return render_template("edit.html", page=page), 400
-                (page_dir / f.filename).write_bytes(data)
+                _write_upload(page_dir, safe_name, data)
 
         (page_dir / "page.md").write_text(md_text)
 
@@ -545,14 +589,20 @@ def add_file(page_rel):
         flash("No file uploaded.", "error")
         return redirect(url_for("view_page", page_rel=page_rel))
 
-    data = uploaded.read()
-    if len(data) > MAX_SOURCE_SIZE:
-        flash(f"File {uploaded.filename} exceeds max size.", "error")
+    # Sanitize filename (no path traversal, extension whitelist)
+    safe_name = _safe_upload_name(uploaded.filename)
+    if safe_name is None:
+        flash(f"File '{uploaded.filename}' was not accepted: use a plain "
+              f"filename with one of these extensions: "
+              f"{', '.join(ALLOWED_UPLOAD_EXTENSIONS)}.", "error")
         return redirect(url_for("view_page", page_rel=page_rel))
 
-    # Sanitize filename (no path traversal)
-    safe_name = Path(uploaded.filename).name
-    (page_dir / safe_name).write_bytes(data)
+    data = uploaded.read()
+    if len(data) > MAX_SOURCE_SIZE:
+        flash(f"File {safe_name} exceeds max size.", "error")
+        return redirect(url_for("view_page", page_rel=page_rel))
+
+    _write_upload(page_dir, safe_name, data)
     flash(f"Saved {safe_name}.", "success")
 
     # Recompile if it's an .asy file
