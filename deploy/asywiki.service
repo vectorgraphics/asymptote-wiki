@@ -16,7 +16,11 @@ Environment=WIKI_PORT=8080
 Environment=COMPILE_TIMEOUT=30
 Environment=MAX_SOURCE_SIZE=100000
 Environment=WIKI_PREFIX=/wiki
-ExecStart=/home/asymptote/asymptote-wiki/venv/bin/python /home/asymptote/asymptote-wiki/app.py
+# Single worker: the compile concurrency semaphore is per-process.
+# --timeout 300: page creation compiles synchronously (up to 30s per
+# file); gunicorn's default 30s would kill the worker mid-request.
+# --access-logfile -: keep request logs in the journal as before.
+ExecStart=/home/asymptote/asymptote-wiki/venv/bin/gunicorn --workers 1 --bind 127.0.0.1:8080 --timeout 300 --access-logfile - app:app
 RestartSec=1
 Restart=on-failure
 
