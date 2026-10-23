@@ -427,11 +427,12 @@ def view_page(page_rel):
             prose_html = _render_markdown(md_text)
             content_html = prose_html + content_html
 
-    # List available source files
+    # List available source files (skip dotfiles like .tmp_*)
     source_files = [
         f.name for f in sorted(page_dir.iterdir())
         if f.is_file() and f.suffix in ALLOWED_UPLOAD_EXTENSIONS
         and f.parent == page_dir
+        and not f.name.startswith(".")
     ]
 
     return render_template(
@@ -665,6 +666,7 @@ def edit_page(page_rel):
         f.name for f in sorted(page_dir.iterdir())
         if f.is_file() and f.suffix in ALLOWED_UPLOAD_EXTENSIONS
         and f.parent == page_dir
+        and not f.name.startswith(".")
     ]
     return render_template("edit.html", page=page, existing_files=existing_files)
 

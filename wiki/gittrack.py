@@ -58,9 +58,9 @@ def ensure_repo(pages_dir: Path) -> bool:
         _run_git(pages_dir, "config", "user.name", _git_user())
         _run_git(pages_dir, "config", "user.email", _git_email())
 
-        # Write .gitignore -- exclude compiled output
+        # Write .gitignore -- exclude compiled output and temp files
         gitignore = pages_dir / ".gitignore"
-        gitignore.write_text("output/\n")
+        gitignore.write_text("output/\n.tmp_*.asy\n")
 
         # Create an initial commit if there are already files
         result = _run_git(pages_dir, "add", ".")
@@ -74,7 +74,7 @@ def ensure_repo(pages_dir: Path) -> bool:
     # before this feature was added)
     gitignore = pages_dir / ".gitignore"
     if not gitignore.exists():
-        gitignore.write_text("output/\n")
+        gitignore.write_text("output/\n.tmp_*.asy\n")
 
     return True
 
