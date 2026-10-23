@@ -683,6 +683,10 @@ def delete_page_route(page_rel):
             flash("Page not found.", "error")
     else:
         flash("Page not found.", "error")
+    # Redirect to the category the page was in (or main page if no category)
+    cat = page.get("category", "") if page else ""
+    if cat:
+        return redirect(url_for("index", cat=cat))
     return redirect(url_for("index"))
 
 
