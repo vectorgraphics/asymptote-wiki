@@ -42,6 +42,9 @@
             </li>
             {% endfor %}
         </ul>
+        {% if source_files|length > 1 %}
+        <a href="{{ url_for('download_source', page_rel=page_rel) }}" class="btn btn-sm">Download All</a>
+        {% endif %}
         <form method="post" action="{{ url_for('add_file', page_rel=page_rel) }}"
               enctype="multipart/form-data" class="add-file-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -51,7 +54,6 @@
     </section>
 
     <div class="page-actions">
-        <a href="{{ url_for('download_source', page_rel=page_rel) }}" class="btn">Download All</a>
         <a href="{{ url_for('edit_page', page_rel=page_rel) }}" class="btn">Edit</a>
         <form method="post" action="{{ url_for('delete_page_route', page_rel=page_rel) }}"
               onsubmit="return confirm('Delete this example? This cannot be undone.');">
