@@ -622,6 +622,11 @@ def edit_page(page_rel):
                     return render_template("edit.html", page=page), 400
                 _write_upload(page_dir, safe_name, data)
 
+        # Handle pasted code (same as new_page: write to main.asy)
+        code = request.form.get("code", "").strip()
+        if code:
+            _write_upload(page_dir, "main.asy", code.encode())
+
         (page_dir / "page.md").write_text(md_text)
 
         meta = json.loads((page_dir / "meta.json").read_text())
