@@ -169,6 +169,10 @@ def move_page(pages_dir: Path, old_rel: str, new_category: str) -> bool:
 
     page_id = old_dir.name
     new_dir = pages_dir / new_category / page_id if new_category else pages_dir / page_id
+    # The destination must stay inside pages_dir (defense in depth; callers
+    # also validate the category format).
+    if not new_dir.resolve().is_relative_to(pages_dir.resolve()):
+        return False
     new_dir.parent.mkdir(parents=True, exist_ok=True)
 
     if new_dir.exists():

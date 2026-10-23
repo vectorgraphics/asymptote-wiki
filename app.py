@@ -155,6 +155,19 @@ def _write_upload(page_dir: Path, name: str, data: bytes) -> None:
     target.write_bytes(data)
 
 
+_CATEGORY_SEGMENT_RE = re.compile(r"[\w-]+")
+
+
+def _valid_category(category: str) -> bool:
+    """
+    A category is '/'-separated segments of word characters and hyphens.
+    Rejects empty segments, leading dots, and '..' (path traversal).
+    """
+    if not category:
+        return True
+    return all(_CATEGORY_SEGMENT_RE.fullmatch(seg) for seg in category.split("/"))
+
+
 ASY_FENCE_RE = re.compile(
     r"```asy:(?P<file>[\w.\-]+)(?:\?f=(?P<fmt>\w+))?\s*\n(?P<code>.*?)```",
     re.DOTALL
@@ -378,6 +391,12 @@ def new_page():
         category = request.form.get("category", "").strip().strip("/")
         md_text = request.form.get("page_md", "").strip()
 
+        if not _valid_category(category):
+            flash("Category may only contain letters, digits, underscores and "
+                  "hyphens, separated by /.", "error")
+            return render_template("edit.html", page=None, existing_files=[],
+                           default_cat=default_cat), 400
+
         if not title:
             flash("Title is required.", "error")
             return render_template("edit.html", page=None, existing_files=[],
@@ -444,6 +463,10 @@ def new_page():
                 page_id = f"{base_slug}-{n}"
                 page_dir = PAGES_DIR / category / page_id if category else PAGES_DIR / page_id
                 n += 1
+
+        # Defense in depth: the destination must stay inside PAGES_DIR
+        if not page_dir.resolve().is_relative_to(PAGES_DIR.resolve()):
+            abort(400, description="Invalid category")
         (page_dir / "output").mkdir()
 
         # Write files
@@ -498,6 +521,11 @@ def edit_page(page_rel):
         new_category = request.form.get("category", "").strip().strip("/")
         md_text = request.form.get("page_md", "").strip()
 
+        if not _valid_category(new_category):
+            flash("Category may only contain letters, digits, underscores and "
+                  "hyphens, separated by /.", "error")
+            return render_template("edit.html", page=page), 400
+
         # Move page if category changed
         old_category = page.get("category", "")
         if new_category != old_category:
@@ -507,7 +535,7 @@ def edit_page(page_rel):
                 page_dir = PAGES_DIR / page_rel
                 flash(f"Moved to {new_category or 'root'}.", "success")
             else:
-                flash("Could not move (destination exists?).", "error")
+                flash("Could not move the page to the new category.", "error")
                 return redirect(url_for("view_page", page_rel=page_rel))
 
         # Replace uploaded files
