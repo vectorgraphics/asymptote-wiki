@@ -649,6 +649,11 @@ def edit_page(page_rel):
     page_dir = _safe_page_dir(page_rel)
     md_text = (page_dir / "page.md").read_text() if (page_dir / "page.md").exists() else ""
     page["page_md"] = md_text
+
+    # Pre-populate code box with main.asy if present
+    main_asy = page_dir / "main.asy"
+    page["main_code"] = main_asy.read_text() if main_asy.exists() else ""
+
     existing_files = [
         f.name for f in sorted(page_dir.iterdir())
         if f.is_file() and f.suffix in ALLOWED_UPLOAD_EXTENSIONS

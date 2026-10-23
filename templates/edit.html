@@ -56,7 +56,7 @@
         <p class="hint">If you don't upload files, paste Asymptote code here (saved as <code>main.asy</code>).</p>
         <textarea id="code" name="code" rows="12" class="code-input"
                   placeholder="size(10cm);
-fill(unitcircle,red);">{{ '' }}</textarea>
+fill(unitcircle,red);">{{ page.main_code if page and page.main_code else '' }}</textarea>
     </div>
 
     <div class="form-group">
