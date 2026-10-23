@@ -195,7 +195,7 @@ def _write_upload(page_dir: Path, name: str, data: bytes) -> None:
     target.write_bytes(data)
 
 
-_CATEGORY_SEGMENT_RE = re.compile(r"[\w-]+")
+_CATEGORY_SEGMENT_RE = re.compile(r"[\w\s-]+")
 
 
 def _valid_category(category: str) -> bool:
@@ -472,12 +472,12 @@ def new_page():
         title = request.form.get("title", "").strip()
         author = request.form.get("author", "").strip()
         tags = request.form.get("tags", "").strip()
-        category = request.form.get("category", "").strip().strip("/").replace(" ", "-")
+        category = request.form.get("category", "").strip().strip("/")
         md_text = request.form.get("page_md", "").strip()
 
         if not _valid_category(category):
-            flash("Category may only contain letters, digits, underscores and "
-                  "hyphens, separated by /.", "error")
+            flash("Category segments may contain letters, digits, spaces, "
+                  "underscores, and hyphens, separated by /.", "error")
             return render_template("edit.html", page=None, existing_files=[],
                            default_cat=default_cat), 400
 
@@ -601,12 +601,9 @@ def edit_page(page_rel):
         new_category = request.form.get("category", "").strip().strip("/")
         md_text = request.form.get("page_md", "").strip()
 
-        # Auto-convert spaces to hyphens (user-friendly)
-        new_category = new_category.replace(" ", "-")
-
         if not _valid_category(new_category):
-            flash("Category may only contain letters, digits, underscores and "
-                  "hyphens, separated by /.", "error")
+            flash("Category segments may contain letters, digits, spaces, "
+                  "underscores, and hyphens, separated by /.", "error")
             return render_template("edit.html", page=page), 400
 
         # Move page if category changed
