@@ -25,7 +25,7 @@ from datetime import datetime, timezone
 
 from flask import (
     Flask, render_template, request, redirect, url_for,
-    send_from_directory, abort, flash
+    send_from_directory, abort, flash, send_file
 )
 import markdown
 from markupsafe import escape
@@ -462,6 +462,35 @@ def serve_output(page_rel, filename):
     if not page_dir.exists() or not (page_dir.parent / "meta.json").exists():
         abort(404)
     return send_from_directory(page_dir, filename)
+
+
+@app.route("/page/<path:page_rel>/download")
+def download_source(page_rel):
+    """Download all source files as a ZIP archive."""
+    import zipfile
+    import io
+
+    page_dir = _safe_page_dir(page_rel)
+    meta_file = page_dir / "meta.json"
+    if not meta_file.exists():
+        abort(404)
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for f in sorted(page_dir.iterdir()):
+            if f.is_file() and not f.name.startswith(".") and f.suffix in ALLOWED_UPLOAD_EXTENSIONS:
+                zf.write(f, arcname=f.name)
+            elif f.name in ("page.md", "meta.json"):
+                zf.write(f, arcname=f.name)
+
+    buffer.seek(0)
+    page_id = page_dir.name
+    return send_file(
+        buffer,
+        mimetype="application/zip",
+        as_attachment=True,
+        download_name=f"{page_id}.zip",
+    )
 
 
 @app.route("/new", methods=["GET", "POST"])
