@@ -9,7 +9,7 @@ Configuration via environment variables:
     WIKI_DATA_DIR   Storage directory (default: ./data)
     WIKI_PORT       Port to listen on (default: 8080)
     WIKI_HOST       Host to bind (default: 127.0.0.1)
-    RENDER_TIMEOUT  Seconds before a render is killed (default: 30)
+    COMPILE_TIMEOUT Seconds before a compilation is killed (default: 30)
     MAX_SOURCE_SIZE Max bytes per uploaded file (default: 100_000)
 """
 
@@ -555,12 +555,11 @@ def new_page():
             "modified": datetime.now(timezone.utc).isoformat(),
             "content_hash": content_hash,
         }
-        (page_dir / "meta.json").write_text(json.dumps(meta, indent=2))
+        page_rel = str(page_dir.relative_to(PAGES_DIR))
+        save_meta(PAGES_DIR, page_rel, meta)
 
         # Compile all .asy files (modules that produce no output are skipped)
         _recompile_page(page_dir)
-
-        page_rel = str(page_dir.relative_to(PAGES_DIR))
         log.info("Created page %s: %s", page_rel, title)
 
         # Git tracking
@@ -625,13 +624,12 @@ def edit_page(page_rel):
 
         (page_dir / "page.md").write_text(md_text)
 
-        meta_file = page_dir / "meta.json"
-        meta = json.loads(meta_file.read_text())
+        meta = json.loads((page_dir / "meta.json").read_text())
         meta["title"] = title
         meta["author"] = author
         meta["tags"] = [t.strip() for t in tags.split(",") if t.strip()]
         meta["modified"] = datetime.now(timezone.utc).isoformat()
-        meta_file.write_text(json.dumps(meta, indent=2))
+        save_meta(PAGES_DIR, page_rel, meta)
 
         # Recompile all .asy files
         _recompile_page(page_dir)

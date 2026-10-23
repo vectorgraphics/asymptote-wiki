@@ -154,7 +154,7 @@ def delete_page(pages_dir: Path, rel_path: str) -> bool:
                 parent.rmdir()
                 parent = parent.parent
             return True
-    return None
+    return False
 
 
 def move_page(pages_dir: Path, old_rel: str, new_category: str) -> bool:

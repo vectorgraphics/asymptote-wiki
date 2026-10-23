@@ -7,4 +7,6 @@ data/pages/
 data/uploads/
 *.swp
 .DS_Store
+log/
+.lim_history
 

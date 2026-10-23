@@ -84,6 +84,9 @@ def commit_all(message: str, pages_dir: Path) -> bool:
     Stage everything and commit with the given message.
     Returns True if a commit was made (or nothing to commit), False on error.
     """
+    # Messages come from user-supplied page titles; git rejects embedded
+    # null bytes, so drop them.
+    message = message.replace("\x00", "")
     pages_dir = pages_dir.resolve()
     if not (pages_dir / ".git").exists():
         if not ensure_repo(pages_dir):
