@@ -472,7 +472,7 @@ def new_page():
         title = request.form.get("title", "").strip()
         author = request.form.get("author", "").strip()
         tags = request.form.get("tags", "").strip()
-        category = request.form.get("category", "").strip().strip("/")
+        category = request.form.get("category", "").strip().strip("/").replace(" ", "-")
         md_text = request.form.get("page_md", "").strip()
 
         if not _valid_category(category):
@@ -600,6 +600,9 @@ def edit_page(page_rel):
         tags = request.form.get("tags", ",".join(page.get("tags", []))).strip()
         new_category = request.form.get("category", "").strip().strip("/")
         md_text = request.form.get("page_md", "").strip()
+
+        # Auto-convert spaces to hyphens (user-friendly)
+        new_category = new_category.replace(" ", "-")
 
         if not _valid_category(new_category):
             flash("Category may only contain letters, digits, underscores and "
