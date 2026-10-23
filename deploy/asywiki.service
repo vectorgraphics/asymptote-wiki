@@ -13,11 +13,11 @@ Environment=WIKI_DATA_DIR=/var/lib/asywiki
 EnvironmentFile=/etc/asywiki/secret.env
 Environment=WIKI_HOST=127.0.0.1
 Environment=WIKI_PORT=8080
-Environment=COMPILE_TIMEOUT=30
+Environment=COMPILE_TIMEOUT=300
 Environment=MAX_SOURCE_SIZE=100000
 Environment=WIKI_PREFIX=/wiki
 # Single worker: the compile concurrency semaphore is per-process.
-# --timeout 300: page creation compiles synchronously (up to 30s per
+# --timeout 300: page creation compiles synchronously (up to 300s per
 # file); gunicorn's default 30s would kill the worker mid-request.
 # --access-logfile -: keep request logs in the journal as before.
 ExecStart=/home/asymptote/asymptote-wiki/venv/bin/gunicorn --workers 1 --bind 127.0.0.1:8080 --timeout 300 --access-logfile - app:app
