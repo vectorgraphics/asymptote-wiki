@@ -172,20 +172,19 @@ document.querySelectorAll('.md-btn[data-md]').forEach(btn => {
     });
 });
 
-// Toggle preview
+// Toggle preview (in place of textarea)
 let previewOn = false;
 toggle.addEventListener('click', () => {
     previewOn = !previewOn;
     if (previewOn) {
-        // Basic markdown rendering (headings, bold, italic, code, math, lists)
         let html = md.value
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
             // asy fences -> placeholder
             .replace(/```asy:(\S+)\n```/g, '<div class="asy-placeholder">[asy: $1]</div>')
-            // display math
-            .replace(/\$\$([\s\S]*?)\$\$/g, '<div class="math-display">$$1$$</div>')
-            // inline math
-            .replace(/\$([^\n$]+)\$/g, '<span class="math-inline">$1</span>')
+            // display math -> KaTeX render targets
+            .replace(/\$\$([\s\S]*?)\$\$/g, '<div class="math-display" data-math="$1"></div>')
+            // inline math -> KaTeX render targets
+            .replace(/\$([^\n$]+)\$/g, '<span class="math-inline" data-math="$1"></span>')
             // code blocks
             .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
             // inline code
@@ -202,9 +201,20 @@ toggle.addEventListener('click', () => {
             .replace(/\n\n/g, '</p><p>')
             .replace(/\n/g, '<br>');
         preview.innerHTML = '<p>' + html + '</p>';
+        // Render KaTeX in the preview
+        if (typeof katex !== 'undefined') {
+            preview.querySelectorAll('.math-display[data-math]').forEach(el => {
+                try { katex.render(el.dataset.math, el, {displayMode: true, throwOnError: false}); } catch(e) { el.textContent = el.dataset.math; }
+            });
+            preview.querySelectorAll('.math-inline[data-math]').forEach(el => {
+                try { katex.render(el.dataset.math, el, {displayMode: false, throwOnError: false}); } catch(e) { el.textContent = el.dataset.math; }
+            });
+        }
+        md.style.display = 'none';
         preview.style.display = 'block';
         toggle.textContent = 'Edit';
     } else {
+        md.style.display = '';
         preview.style.display = 'none';
         toggle.textContent = 'Preview';
         md.focus();

@@ -340,9 +340,10 @@ footer {
     border: 1px solid var(--color-border, #e5e7eb);
     border-radius: var(--radius, 6px);
     padding: 0.75rem 1rem;
-    margin-top: 0.5rem;
     background: #fafafa;
     min-height: 3rem;
+    width: 100%;
+    font-size: 0.95rem;
 }
 .md-preview .asy-placeholder {
     background: #f0f9ff;
