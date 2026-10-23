@@ -54,6 +54,17 @@ MAX_CONCURRENT_COMPILES = int(os.environ.get("MAX_CONCURRENT_COMPILES", "3"))
 import threading
 _compile_sem = threading.Semaphore(MAX_CONCURRENT_COMPILES)
 
+def _background_compile_and_commit(page_dir: Path, message: str) -> None:
+    """Compile page and git-commit in a background thread."""
+    def _work():
+        try:
+            _recompile_page(page_dir)
+            gittrack.commit_all(message, PAGES_DIR)
+            gittrack.push(PAGES_DIR)
+        except Exception as e:
+            log.error("Background compile/commit failed: %s", e)
+    threading.Thread(target=_work, daemon=True).start()
+
 # --- App setup -------------------------------------------------------------
 
 app = Flask(__name__)
@@ -561,13 +572,10 @@ def new_page():
         page_rel = str(page_dir.relative_to(PAGES_DIR))
         save_meta(PAGES_DIR, page_rel, meta)
 
-        # Compile all .asy files (modules that produce no output are skipped)
-        _recompile_page(page_dir)
         log.info("Created page %s: %s", page_rel, title)
 
-        # Git tracking
-        gittrack.commit_all(f"Add: {title}", PAGES_DIR)
-        gittrack.push(PAGES_DIR)
+        # Compile + git in background so the user isn't kept waiting
+        _background_compile_and_commit(page_dir, f"Add: {title}")
 
         return redirect(url_for("view_page", page_rel=page_rel))
 
@@ -639,12 +647,8 @@ def edit_page(page_rel):
         meta["modified"] = datetime.now(timezone.utc).isoformat()
         save_meta(PAGES_DIR, page_rel, meta)
 
-        # Recompile all .asy files
-        _recompile_page(page_dir)
-
-        # Git tracking
-        gittrack.commit_all(f"Edit: {title}", PAGES_DIR)
-        gittrack.push(PAGES_DIR)
+        # Compile + git in background
+        _background_compile_and_commit(page_dir, f"Edit: {title}")
 
         return redirect(url_for("view_page", page_rel=page_rel))
 
@@ -713,13 +717,8 @@ def add_file(page_rel):
     _write_upload(page_dir, safe_name, data)
     flash(f"Saved {safe_name}.", "success")
 
-    # Recompile if it's an .asy file
-    if safe_name.endswith(".asy"):
-        _recompile_page(page_dir)
-
-    # Git tracking
-    gittrack.commit_all(f"Add file: {safe_name}", PAGES_DIR)
-    gittrack.push(PAGES_DIR)
+    # Compile + git in background
+    _background_compile_and_commit(page_dir, f"Add file: {safe_name}")
 
     return redirect(url_for("view_page", page_rel=page_rel))
 
