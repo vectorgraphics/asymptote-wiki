@@ -74,6 +74,15 @@ fill(unitcircle,red);">{{ page.main_code if page and page.main_code else '' }}</
 
     </div>
 
+    {% if page %}
+    <div class="form-group">
+        <label for="edit_summary">Edit summary (optional)</label>
+        <input type="text" id="edit_summary" name="edit_summary"
+               placeholder="e.g. Fixed color, updated to new asy syntax"
+               maxlength="200">
+    </div>
+    {% endif %}
+
     <div class="form-actions">
         <button type="submit" class="btn btn-primary">
             {% if page %}Save &amp; Re-render{% else %}Submit &amp; Render{% endif %}

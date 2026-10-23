@@ -626,6 +626,7 @@ def edit_page(page_rel):
         tags = request.form.get("tags", ",".join(page.get("tags", []))).strip()
         new_category = request.form.get("category", "").strip().strip("/")
         md_text = request.form.get("page_md", "").strip()
+        edit_summary = request.form.get("edit_summary", "").strip()
 
         if not _valid_category(new_category):
             flash("Category segments may contain letters, digits, spaces, "
@@ -675,7 +676,10 @@ def edit_page(page_rel):
         save_meta(PAGES_DIR, page_rel, meta)
 
         # Compile + git in background
-        _background_compile_and_commit(page_dir, f"Edit: {title}")
+        msg = f"Edit: {title}"
+        if edit_summary:
+            msg += f" -- {edit_summary}"
+        _background_compile_and_commit(page_dir, msg)
 
         return redirect(url_for("view_page", page_rel=page_rel))
 
