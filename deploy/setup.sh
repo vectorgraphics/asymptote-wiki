@@ -22,17 +22,17 @@ echo "Using asy: $ASY_PATH"
 echo "=== asymptote-wiki setup ==="
 
 # 1. Create directories
-echo "[1/6] Creating directories..."
+echo "[1/7] Creating directories..."
 install -d -o "$SERVICE_USER" -g "$SERVICE_USER" "$APP_DIR"
 install -d -o "$SERVICE_USER" -g "$SERVICE_USER" "$DATA_DIR"
 
 # 2. Copy application files
-echo "[2/6] Copying application files to $APP_DIR..."
+echo "[2/7] Copying application files to $APP_DIR..."
 rsync -a --exclude='venv' --exclude='__pycache__' --exclude='data' \
     --exclude='.git' "$REPO_DIR/" "$APP_DIR/"
 
 # 3. Create virtualenv and install dependencies
-echo "[3/6] Setting up Python virtualenv..."
+echo "[3/7] Setting up Python virtualenv..."
 sudo -u "$SERVICE_USER" bash -c "
     cd $APP_DIR
     python3 -m venv venv
@@ -40,8 +40,22 @@ sudo -u "$SERVICE_USER" bash -c "
     venv/bin/pip install --quiet -r requirements.txt
 "
 
-# 4. Install systemd service (override ASY_BINARY if not default)
-echo "[4/6] Installing systemd service..."
+# 4. Secret for session/CSRF token signing (root-only; the service loads it
+#    via EnvironmentFile=). Never overwrites an existing secret -- rotate
+#    manually if needed (and the old sessions/CSRF tokens stop working).
+echo "[4/7] Setting up /etc/asywiki/secret.env..."
+if [ ! -f /etc/asywiki/secret.env ]; then
+    install -d -m 755 -o root -g root /etc/asywiki
+    printf 'WIKI_SECRET=%s\n' "$(openssl rand -hex 32)" > /etc/asywiki/secret.env
+    chown root:root /etc/asywiki/secret.env
+    chmod 600 /etc/asywiki/secret.env
+    echo "  Created /etc/asywiki/secret.env (0600 root:root)"
+else
+    echo "  /etc/asywiki/secret.env already present -- leaving it alone"
+fi
+
+# 5. Install systemd service (override ASY_BINARY if not default)
+echo "[5/7] Installing systemd service..."
 cp "$REPO_DIR/deploy/asywiki.service" /etc/systemd/system/asywiki.service
 if [ "$ASY_PATH" != "/usr/local/bin/asy" ]; then
     sed -i "s|Environment=ASY_BINARY=.*|Environment=ASY_BINARY=$ASY_PATH|" \
@@ -54,8 +68,8 @@ systemctl restart asywiki.service
 sleep 2
 systemctl status asywiki.service --no-pager
 
-# 5. nginx configuration
-echo "[5/6] nginx configuration..."
+# 6. nginx configuration
+echo "[6/7] nginx configuration..."
 echo ""
 echo "  ADD THIS to your nginx server block for asymptote.ualberta.ca:"
 echo ""
@@ -72,8 +86,8 @@ echo ""
 echo "  Then run:  nginx -t && systemctl reload nginx"
 echo ""
 
-# 6. Verify
-echo "[6/6] Verifying..."
+# 7. Verify
+echo "[7/7] Verifying..."
 sleep 1
 if curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/ | grep -q "200"; then
     echo "  OK: Wiki is responding on 127.0.0.1:8080"

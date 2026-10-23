@@ -96,6 +96,11 @@ if not os.environ.get("WIKI_SECRET"):
     raise RuntimeError(
         "WIKI_SECRET must be set (e.g. EnvironmentFile=/etc/asywiki/secret.env)"
     )
+
+# Values that must never reach production (the secret signs session and
+# CSRF tokens; a known value lets anyone forge them).
+_KNOWN_DEFAULT_SECRETS = {"dev-change-me", "CHANGE_ME_to_random_hex"}
+
 app.secret_key = os.environ["WIKI_SECRET"]
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5 MB upload limit
 
@@ -129,6 +134,11 @@ app.config["SESSION_COOKIE_SECURE"] = True
 if os.environ.get("WIKI_PREFIX") or os.environ.get("WIKI_HOST") == "0.0.0.0":
     if os.environ.get("FLASK_DEBUG") == "1":
         raise RuntimeError("FLASK_DEBUG must not be set in production")
+    if os.environ["WIKI_SECRET"] in _KNOWN_DEFAULT_SECRETS:
+        raise RuntimeError(
+            "WIKI_SECRET is a known default; set a random value in "
+            "/etc/asywiki/secret.env (e.g. openssl rand -hex 32)"
+        )
 
 # --- Helpers ----------------------------------------------------------------
 
