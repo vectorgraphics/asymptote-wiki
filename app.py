@@ -366,7 +366,7 @@ def view_page(page_rel):
 def serve_source(page_rel, filename):
     """Serve raw source file."""
     page_dir = _safe_page_dir(page_rel)
-    if not page_dir.exists():
+    if not page_dir.exists() or not (page_dir / "meta.json").exists():
         abort(404)
     return send_from_directory(page_dir, filename)
 
@@ -375,7 +375,7 @@ def serve_source(page_rel, filename):
 def serve_output(page_rel, filename):
     """Serve compiled output (HTML, SVG, PDF, V3D)."""
     page_dir = _safe_page_dir(page_rel) / "output"
-    if not page_dir.exists():
+    if not page_dir.exists() or not (page_dir.parent / "meta.json").exists():
         abort(404)
     return send_from_directory(page_dir, filename)
 
