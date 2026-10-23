@@ -19,6 +19,7 @@ import hashlib
 import json
 import shutil
 import logging
+import secrets
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -27,6 +28,7 @@ from flask import (
     send_from_directory, abort, flash
 )
 import markdown
+from markupsafe import escape
 
 from wiki.compile import compile_asy, CompileError
 from wiki.storage import (
@@ -56,6 +58,11 @@ _compile_sem = threading.Semaphore(MAX_CONCURRENT_COMPILES)
 
 app = Flask(__name__)
 WIKI_PREFIX = os.environ.get('WIKI_PREFIX', '')
+
+@app.after_request
+def _security_headers(response):
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    return response
 
 # When deployed under /wiki/, rewrite URL prefixes in HTML responses.
 # This is the most reliable approach -- no matter how Flask generates URLs,
@@ -168,6 +175,23 @@ def _valid_category(category: str) -> bool:
     return all(_CATEGORY_SEGMENT_RE.fullmatch(seg) for seg in category.split("/"))
 
 
+def _render_markdown(text: str) -> str:
+    """
+    Render user-supplied markdown. Any raw HTML in the text is escaped
+    before rendering, so it can never pass through as live markup.
+    """
+    return markdown.markdown(escape(text), extensions=["fenced_code", "tables"])
+
+
+def _fence_token(nonce: str, i: int) -> str:
+    """
+    Unique placeholder for an asy fence's generated HTML. Uppercase, digits
+    and hyphens only, so it survives markdown untouched (as a lone
+    paragraph) and cannot collide with user text (random nonce per render).
+    """
+    return f"ASYWIKI-FENCE-{nonce}-{i}"
+
+
 ASY_FENCE_RE = re.compile(
     r"```asy:(?P<file>[\w.\-]+)(?:\?f=(?P<fmt>\w+))?\s*\n(?P<code>.*?)```",
     re.DOTALL
@@ -189,11 +213,12 @@ def _auto_display(page_dir: Path) -> str:
         # html_file is e.g. output/test.asy.html -> source is test.asy
         src_name = html_file.name.removesuffix(".html")
         src_file = page_dir / src_name
+        name_html = escape(src_name)
 
         url = url_for("serve_output", page_rel=str(page_dir.relative_to(PAGES_DIR)), filename=html_file.name)
         display = (
             f"<div class='asy-output asy-html'>"
-            f"<h3>{src_name}</h3>"
+            f"<h3>{name_html}</h3>"
             f"<iframe src='{url}' frameborder='0' "
             f"style='width:100%;min-height:300px;border:1px solid #e5e7eb;"
             f"border-radius:6px;'></iframe>"
@@ -205,11 +230,10 @@ def _auto_display(page_dir: Path) -> str:
         # Collapsible source
         if src_file.exists():
             code = src_file.read_text(errors="replace")
-            escaped = code.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
             display += (
                 f"<details class='asy-source'>"
-                f"<summary>View source ({src_name})</summary>"
-                f"<pre>{escaped}</pre></details>"
+                f"<summary>View source ({name_html})</summary>"
+                f"<pre>{escape(code)}</pre></details>"
             )
 
         parts.append(display)
@@ -225,16 +249,29 @@ def compile_markdown_with_asy(md_text: str, page_dir: Path) -> str:
 
     Default output is "html" (SVG for 2D, WebGL for 3D), displayed in an
     iframe -- the same approach as the Asymptote Web Application.
+
+    The fence replacements are app-generated markup (iframes, <img>, error
+    boxes). They are not run through the markdown renderer: each fence is
+    first swapped for a unique placeholder token, the remaining (user)
+    markdown is rendered with its raw HTML escaped, and the trusted HTML is
+    then spliced back in place of the tokens.
     """
+    nonce = secrets.token_hex(8)
+    splices = []
+
     def replace_fence(m):
         filename = m.group("file")
         fmt = m.group("fmt") or "html"
         code = m.group("code")
-        src_file = page_dir / filename
 
-        # Skip if source file doesn't exist (e.g. referenced but not uploaded)
-        if not src_file.exists():
+        # The source must be a regular file inside this page dir.
+        src_file = (page_dir / filename).resolve()
+        if not src_file.is_relative_to(page_dir) or not src_file.is_file():
             return ""
+
+        def splice(html: str) -> str:
+            splices.append(html)
+            return f"\n\n{_fence_token(nonce, len(splices) - 1)}\n\n"
 
         # Determine output path
         out_file = page_dir / "output" / f"{filename}.{fmt}"
@@ -250,17 +287,18 @@ def compile_markdown_with_asy(md_text: str, page_dir: Path) -> str:
                         extra_args=["-noglobalread"],
                     )
             except CompileError as e:
-                return f"<pre class='compile-error'>Compile failed for {filename}:\n{e}</pre>"
+                return splice(f"<pre class='compile-error'>Compile failed for {escape(filename)}:\n{escape(e)}</pre>")
             except Exception as e:
-                return f"<pre class='compile-error'>Error compiling {filename}:\n{e}</pre>"
+                return splice(f"<pre class='compile-error'>Error compiling {escape(filename)}:\n{escape(e)}</pre>")
 
         # If no output was produced (e.g. a module with no shipout()), skip it
         if not out_file.exists():
             return ""
 
-        # Build the display: iframe for html, inline for svg, link for others
+        rel = str(page_dir.relative_to(PAGES_DIR))
+        # Build the display: iframe for html, image for svg, link for others
         if fmt == "html":
-            url = url_for("serve_output", page_rel=str(page_dir.relative_to(PAGES_DIR)), filename=f"{filename}.html")
+            url = url_for("serve_output", page_rel=rel, filename=f"{filename}.html")
             display_html = (
                 f"<div class='asy-output asy-html'>"
                 f"<iframe src='{url}' frameborder='0' "
@@ -271,34 +309,44 @@ def compile_markdown_with_asy(md_text: str, page_dir: Path) -> str:
                 f"</div></div>"
             )
         elif fmt == "svg":
-            svg_content = out_file.read_text()
-            display_html = f"<div class='asy-output asy-svg'>{svg_content}</div>"
+            # Serve the SVG as a separate file rather than inlining
+            # user-generated markup into the page.
+            url = url_for("serve_output", page_rel=rel, filename=f"{filename}.svg")
+            display_html = (
+                f"<div class='asy-output asy-svg'>"
+                f"<img src='{url}' alt='{escape(filename)}' style='max-width:100%;'></img>"
+                f"</div>"
+            )
         elif fmt == "pdf":
-            url = url_for("serve_output", page_rel=str(page_dir.relative_to(PAGES_DIR)), filename=f"{filename}.pdf")
+            url = url_for("serve_output", page_rel=rel, filename=f"{filename}.pdf")
             display_html = (
                 f"<div class='asy-output asy-pdf'>"
                 f"<iframe src='{url}' style='width:100%;height:400px;"
                 f"border:1px solid #e5e7eb;border-radius:6px;'></iframe></div>"
             )
         else:
-            url = url_for("serve_output", page_rel=str(page_dir.relative_to(PAGES_DIR)), filename=f"{filename}.{fmt}")
-            display_html = f"<p><a href='{url}'>Download {filename}.{fmt}</a></p>"
+            url = url_for("serve_output", page_rel=rel, filename=f"{filename}.{fmt}")
+            display_html = f"<p><a href='{url}'>Download {escape(filename)}.{escape(fmt)}</a></p>"
 
         # Collapsible source
-        escaped_code = code.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
         src_html = (
             f"<details class='asy-source'>"
-            f"<summary>View source ({filename})</summary>"
-            f"<pre>{escaped_code}</pre></details>"
+            f"<summary>View source ({escape(filename)})</summary>"
+            f"<pre>{escape(code)}</pre></details>"
         )
 
-        return display_html + src_html
+        return splice(display_html + src_html)
 
-    # Replace asy fences with compiled output
-    html_with_asy = ASY_FENCE_RE.sub(replace_fence, md_text)
+    # Replace asy fences with placeholder tokens
+    text = ASY_FENCE_RE.sub(replace_fence, md_text)
 
-    # Process the rest as markdown
-    rendered = markdown.markdown(html_with_asy, extensions=["fenced_code", "tables"])
+    # Render the remaining (user) markdown with raw HTML escaped
+    rendered = _render_markdown(text)
+
+    # Splice the app-generated HTML back in place of the tokens
+    for i, html in enumerate(splices):
+        token = _fence_token(nonce, i)
+        rendered = rendered.replace(f"<p>{token}</p>", html).replace(token, html)
     return rendered
 
 
@@ -343,13 +391,13 @@ def view_page(page_rel):
         content_html = _auto_display(page_dir)
         # Still render any surrounding markdown prose
         if md_text.strip():
-            prose_html = markdown.markdown(md_text, extensions=["fenced_code", "tables"])
+            prose_html = _render_markdown(md_text)
             content_html = prose_html + content_html
 
     # List available source files
     source_files = [
         f.name for f in sorted(page_dir.iterdir())
-        if f.is_file() and f.suffix in (".asy", ".txt", ".csv", ".dat")
+        if f.is_file() and f.suffix in ALLOWED_UPLOAD_EXTENSIONS
         and f.parent == page_dir
     ]
 
@@ -364,9 +412,11 @@ def view_page(page_rel):
 
 @app.route("/page/<path:page_rel>/raw/<filename>")
 def serve_source(page_rel, filename):
-    """Serve raw source file."""
+    """Serve a raw source file (whitelisted text extensions only)."""
     page_dir = _safe_page_dir(page_rel)
     if not page_dir.exists() or not (page_dir / "meta.json").exists():
+        abort(404)
+    if Path(filename).suffix.lower() not in ALLOWED_UPLOAD_EXTENSIONS:
         abort(404)
     return send_from_directory(page_dir, filename)
 
@@ -579,7 +629,7 @@ def edit_page(page_rel):
     page["page_md"] = md_text
     existing_files = [
         f.name for f in sorted(page_dir.iterdir())
-        if f.is_file() and f.suffix in (".asy", ".txt", ".csv", ".dat")
+        if f.is_file() and f.suffix in ALLOWED_UPLOAD_EXTENSIONS
         and f.parent == page_dir
     ]
     return render_template("edit.html", page=page, existing_files=existing_files)
