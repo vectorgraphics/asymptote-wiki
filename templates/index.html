@@ -58,7 +58,7 @@
         <h1>{% if current_cat %}{{ current_cat }}{% else %}Main Page{% endif %}</h1>
         {% if not current_cat %}
         <div class="subtitle-block">
-        <p class="subtitle">A community gallery of Asymptote examples and modules.
+        <p class="subtitle">A community gallery of <a href="https://asymptote.sourceforge.io" target="_blank">Asymptote</a> examples and modules.
         <a href="{{ url_for('new_page', cat=current_cat) }}">Contribute your own!</a></p>
         <p class="subtitle"><a href="https://github.com/vectorgraphics/asymptote-wiki-data" target="_blank">Track changes on GitHub</a></p>
         </div>
