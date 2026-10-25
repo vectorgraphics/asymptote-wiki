@@ -453,8 +453,14 @@ def view_category(cat):
     subcats = sorted({p["category"] for p in all_pages
                       if len(p["category"].split("/")) == depth + 1})
     parts = raw.split("/")
-    return render_template("category.html", pages=pages, subcats=subcats, cat=raw,
-                           cat_name=parts[-1], parent="/".join(parts[:-1]))
+    parent = "/".join(parts[:-1])
+    ctx = dict(pages=pages, subcats=subcats, cat=raw, cat_name=parts[-1], parent=parent)
+    if parent:
+        # Top nav "back" button returns to the parent category; top-level
+        # categories fall back to the Main Page (handled in the template).
+        ctx["back_href"] = url_for("view_category", cat=parent)
+        ctx["back_label"] = parts[-2]
+    return render_template("category.html", **ctx)
 
 
 @app.route("/page/<path:page_rel>")

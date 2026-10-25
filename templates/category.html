@@ -4,10 +4,6 @@
 {% block content %}
 <div class="gallery-main">
     <h1>{{ cat_name }}</h1>
-    <div class="subtitle-block">
-        <a href="{{ url_for('index') }}">&larr; Main Page</a>
-        {% if parent %} &middot; <a href="{{ url_for('view_category', cat=parent) }}">{{ parent.split('/')[-1] }}</a>{% endif %}
-    </div>
 
     {% if subcats %}
     <h2>Subcategories</h2>

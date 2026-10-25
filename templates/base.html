@@ -23,7 +23,7 @@
         <nav>
             <a href="{{ url_for('index') }}" class="logo">Asymptote Wiki</a>
             {% if request.path != url_for('index') or request.args.get('cat') %}
-            <a href="{{ url_for('index') }}" class="btn btn-sm">&larr; Main Page</a>
+            <a href="{{ back_href or url_for('index') }}" class="btn btn-sm">&larr; {{ back_label or 'Main Page' }}</a>
             {% endif %}
             <a href="{% if current_cat %}{{ url_for('new_page', cat=current_cat) }}{% else %}{{ url_for('new_page') }}{% endif %}" class="btn btn-primary">+ New Example</a>
         </nav>
