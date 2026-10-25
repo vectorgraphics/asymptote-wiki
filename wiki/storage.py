@@ -195,15 +195,15 @@ def move_page(pages_dir: Path, old_rel: str, new_category: str) -> bool:
     return True
 
 
-def next_id(pages_dir: Path, title: str = "") -> str:
+def next_id(parent_dir: Path, title: str = "") -> str:
     """Generate a page directory name from the title.
     Uses the title as-is (stripped of path-unsafe chars).
-    If the name is already taken (anywhere), append -2, -3, etc.
+    If the name is already taken in the same parent directory,
+    append -2, -3, etc.
     """
     import re
     if title:
         title = re.sub(r"\.asy$", "", title)  # strip extension if present
-        # Remove only characters that are unsafe in a path
         slug = re.sub(r'[/\\:\0]', "", title).strip()
     else:
         slug = "untitled"
@@ -211,20 +211,16 @@ def next_id(pages_dir: Path, title: str = "") -> str:
         slug = "untitled"
     base = slug
     n = 2
-    while _slug_exists(pages_dir, slug):
+    while _name_exists_in(parent_dir, slug):
         slug = f"{base}-{n}"
         n += 1
     return slug
 
 
-def _slug_exists(pages_dir: Path, slug: str) -> bool:
-    """Check if any page directory already uses this name."""
-    if not pages_dir.exists():
-        return False
-    for d in pages_dir.rglob(slug):
-        if d.is_dir() and (d / "meta.json").exists():
-            return True
-    return False
+def _name_exists_in(parent_dir: Path, name: str) -> bool:
+    """Check if a directory with this name exists in the given parent."""
+    candidate = parent_dir / name
+    return candidate.is_dir() and (candidate / "meta.json").exists()
 
 
 def search_pages(pages_dir: Path, query: str) -> list[dict]:

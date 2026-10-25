@@ -558,7 +558,8 @@ def new_page():
 
 
 
-        page_id = next_id(PAGES_DIR, title)
+        target_parent = PAGES_DIR / category if category else PAGES_DIR
+        page_id = next_id(target_parent, title)
         # Dedup: if an identical page already exists, redirect to it
         file_hash = hashlib.sha256()
         for name in sorted(files):
