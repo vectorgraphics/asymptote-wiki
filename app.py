@@ -328,6 +328,7 @@ def compile_markdown_with_asy(md_text: str, page_dir: Path) -> str:
                         timeout=COMPILE_TIMEOUT,
                         asy_binary=ASY_BINARY,
                         extra_args=["-noglobalread"],
+                        search_dir=str(PAGES_DIR),
                     )
             except CompileError as e:
                 return splice(f"<pre class='compile-error'>Compile failed for {escape(filename)}:\n{escape(e)}</pre>")
@@ -820,6 +821,7 @@ def _recompile_page(page_dir: Path) -> None:
                         timeout=COMPILE_TIMEOUT,
                         asy_binary=ASY_BINARY,
                         extra_args=["-noglobalread"],
+                        search_dir=str(PAGES_DIR),
                     )
             except Exception as e:
                 log.warning("Compile failed for %s: %s", f.name, e)

@@ -27,6 +27,7 @@ def compile_asy(
     timeout: int = 30,
     asy_binary: str = "asy",
     extra_args: list[str] | None = None,
+    search_dir: str | None = None,
 ) -> None:
     """
     Compile an .asy file in place, directing output to the out_file's directory.
@@ -54,6 +55,8 @@ def compile_asy(
 
     # -o <dir>/  -> asy writes <dir>/<srcname>.<ext>
     cmd = [asy_binary, "-f", fmt, "-o", str(out_dir) + "/", src_file.name]
+    if search_dir:
+        cmd.extend(["-dir", search_dir])
     if extra_args:
         cmd.extend(extra_args)
 
