@@ -438,6 +438,25 @@ def search():
                            current_cat="", search_query=query, modules=modules)
 
 
+@app.route("/category/<path:cat>")
+def view_category(cat):
+    """Dedicated page for a category: its examples and subcategories."""
+    raw = cat.strip("/")
+    cat_dir = PAGES_DIR / raw
+    # A category is a directory that exists but is not itself a page
+    # (a page dir contains a meta.json; a category dir does not).
+    if not _valid_category(raw) or not cat_dir.exists() or (cat_dir / "meta.json").exists():
+        abort(404)
+    all_pages = list_pages(PAGES_DIR, category=raw)
+    depth = len(raw.split("/"))
+    pages = [p for p in all_pages if p["category"] == raw]
+    subcats = sorted({p["category"] for p in all_pages
+                      if len(p["category"].split("/")) == depth + 1})
+    parts = raw.split("/")
+    return render_template("category.html", pages=pages, subcats=subcats, cat=raw,
+                           cat_name=parts[-1], parent="/".join(parts[:-1]))
+
+
 @app.route("/page/<path:page_rel>")
 def view_page(page_rel):
     """View a single example page. page_rel is like '3D/Surfaces/0001' or '0004'."""

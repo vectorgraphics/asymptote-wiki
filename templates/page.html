@@ -61,7 +61,7 @@
             <button type="submit" class="btn btn-danger">Delete</button>
         </form>
         {% if page.category %}
-        <a href="{{ url_for('index', cat=page.category) }}" class="btn">Back to {{ page.category }}</a>
+        <a href="{{ url_for('view_category', cat=page.category) }}" class="btn">Back to {{ page.category }}</a>
         {% else %}
         <a href="{{ url_for('index') }}" class="btn">Back to Main Page</a>
         {% endif %}

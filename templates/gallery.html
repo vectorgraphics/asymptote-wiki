@@ -1,0 +1,36 @@
+
+{# Shared example gallery. Expects "pages" in the context (list of page dicts). #}
+<div class="gallery">
+    {% for page in pages %}
+    <div class="card">
+        <a href="{{ url_for('view_page', page_rel=page['rel_path']) }}" class="card-thumb">
+            {% if page.thumbnail %}
+                <iframe src="{{ page.thumbnail }}" class="thumb-frame"
+                        scrolling="no" tabindex="-1"></iframe>
+            {% else %}
+                <div class="no-thumb">No preview</div>
+            {% endif %}
+        </a>
+        <div class="card-body">
+            <h3><a href="{{ url_for('view_page', page_rel=page['rel_path']) }}">{{ page.title }}</a></h3>
+            <p class="card-meta">
+                {% if page.author %}by {{ page.author }} &middot;{% endif %}
+                {{ page.created[:10] if page.created else '' }}
+            </p>
+            {% if page.tags %}
+            <div class="tags">
+                {% for tag in page.tags %}
+                <span class="tag">{{ tag }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% if page.match_fields %}
+            <p class="match-info">
+                Matched: {% for m in page.match_fields %}{{ m }}{% if not loop.last %}, {% endif %}{% endfor %}
+            </p>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+

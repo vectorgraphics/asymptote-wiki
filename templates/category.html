@@ -1,0 +1,28 @@
+
+{% extends "base.html" %}
+{% block title %}{{ cat_name }} -- Asymptote Wiki{% endblock %}
+{% block content %}
+<div class="gallery-main">
+    <h1>{{ cat_name }}</h1>
+    <div class="subtitle-block">
+        <a href="{{ url_for('index') }}">&larr; Main Page</a>
+        {% if parent %} &middot; <a href="{{ url_for('view_category', cat=parent) }}">{{ parent.split('/')[-1] }}</a>{% endif %}
+    </div>
+
+    {% if subcats %}
+    <h2>Subcategories</h2>
+    <ul class="cat-tree">
+        {% for s in subcats %}
+        <li><a href="{{ url_for('view_category', cat=s) }}">{{ s.split('/')[-1] }}</a></li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if pages %}
+    {% include "gallery.html" %}
+    {% else %}
+    <p>No examples in this category yet. <a href="{{ url_for('new_page', cat=cat) }}">Contribute one!</a></p>
+    {% endif %}
+</div>
+{% endblock %}
+
