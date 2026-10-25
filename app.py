@@ -208,6 +208,13 @@ def _write_upload(page_dir: Path, name: str, data: bytes) -> None:
 _CATEGORY_SEGMENT_RE = re.compile(r"[\w\s-]+")
 
 
+def _capitalize_category(category: str) -> str:
+    """Capitalize the first letter of each /-separated segment."""
+    if not category:
+        return category
+    return "/".join(seg[:1].upper() + seg[1:] for seg in category.split("/"))
+
+
 def _valid_category(category: str) -> bool:
     """
     A category is '/'-separated segments of word characters and hyphens.
@@ -512,7 +519,7 @@ def new_page():
         title = request.form.get("title", "").strip()
         author = request.form.get("author", "").strip()
         tags = request.form.get("tags", "").strip()
-        category = request.form.get("category", "").strip().strip("/")
+        category = _capitalize_category(request.form.get("category", "").strip().strip("/"))
         md_text = request.form.get("page_md", "").strip()
 
         if not _valid_category(category):
@@ -638,7 +645,7 @@ def edit_page(page_rel):
         title = request.form.get("title", page["title"]).strip()
         author = request.form.get("author", page.get("author", "")).strip()
         tags = request.form.get("tags", ",".join(page.get("tags", []))).strip()
-        new_category = request.form.get("category", "").strip().strip("/")
+        new_category = _capitalize_category(request.form.get("category", "").strip().strip("/"))
         md_text = request.form.get("page_md", "").strip()
         edit_summary = request.form.get("edit_summary", "").strip()
 
