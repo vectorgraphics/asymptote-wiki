@@ -68,11 +68,19 @@ footer {
     display: grid;
     grid-template-columns: 200px 1fr;
     gap: 2rem;
+    align-items: start;
+}
+.sidebar {
+    position: sticky;
+    top: 1rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+    overflow-x: auto;
 }
 .sidebar h2 { font-size: 1rem; margin-bottom: 0.5rem; }
 .cat-tree { list-style: none; padding: 0; }
 .cat-tree li { margin: 0.15rem 0; }
-.cat-tree ul { list-style: none; padding-left: 1rem; }
+.cat-tree ul { list-style: none; padding-left: 0.5rem; }
 .cat-tree a {
     display: block;
     padding: 0.2rem 0.5rem;
@@ -81,6 +89,17 @@ footer {
 }
 .cat-tree a:hover { background: var(--color-code-bg); text-decoration: none; }
 .cat-tree a.active { background: var(--color-primary); color: #fff; }
+.cat-tree details { padding-left: 0.5rem; }
+.cat-tree summary {
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: #6b7280;
+    padding: 0.1rem 0.5rem;
+    list-style: none;
+}
+.cat-tree summary::-webkit-details-marker { display: none; }
+.cat-tree summary::before { content: " "; }
+.cat-tree details[open] summary::before { content: " "; }
 .gallery-main { min-width: 0; }
 .gallery-main h1 { text-align: center; }
 .subtitle-block { margin-bottom: 0.5rem; text-align: center; }
