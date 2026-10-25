@@ -11,8 +11,6 @@ WorkingDirectory=/home/asymptote/asymptote-wiki
 Environment=ASY_BINARY=/usr/local/bin/asy
 Environment=WIKI_DATA_DIR=/var/lib/asywiki
 EnvironmentFile=/etc/asywiki/secret.env
-Environment=WIKI_HOST=127.0.0.1
-Environment=WIKI_PORT=8080
 Environment=COMPILE_TIMEOUT=120
 Environment=WIKI_PREFIX=/wiki
 # Single worker: the compile concurrency semaphore is per-process.
