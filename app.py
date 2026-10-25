@@ -185,10 +185,23 @@ def _safe_upload_name(filename: str) -> str | None:
 
 
 def _write_upload(page_dir: Path, name: str, data: bytes) -> None:
-    """Write an uploaded file into page_dir, refusing to escape the directory."""
+    """Write an uploaded file into page_dir, refusing to escape the directory.
+
+    For .asy files, strips `settings.outformat = ...` lines so the wiki
+    controls the output format at compile time.
+    """
     target = (page_dir / name).resolve()
     if not target.is_relative_to(page_dir.resolve()):
         abort(400, description="Invalid filename")
+
+    if name.endswith(".asy"):
+        text = data.decode("utf-8", errors="replace")
+        text = re.sub(
+            r"^\s*settings\.outformat\s*=.*$",
+            "", text, flags=re.MULTILINE
+        )
+        data = text.encode("utf-8")
+
     target.write_bytes(data)
 
 
