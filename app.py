@@ -526,7 +526,7 @@ def new_page():
                            default_cat=default_cat), 400
                 data = f.read()
                 if len(data) > MAX_SOURCE_SIZE:
-                    flash(f"File {safe_name} exceeds max size.", "error")
+                    flash(f"File {safe_name} is {len(data):,} bytes (limit: {MAX_SOURCE_SIZE:,} bytes).", "error")
                     return render_template("edit.html", page=None, existing_files=[],
                            default_cat=default_cat), 400
                 files[safe_name] = data
@@ -657,7 +657,7 @@ def edit_page(page_rel):
                     return render_template("edit.html", page=page), 400
                 data = f.read()
                 if len(data) > MAX_SOURCE_SIZE:
-                    flash(f"File {safe_name} exceeds max size.", "error")
+                    flash(f"File {safe_name} is {len(data):,} bytes (limit: {MAX_SOURCE_SIZE:,} bytes).", "error")
                     return render_template("edit.html", page=page), 400
                 _write_upload(page_dir, safe_name, data)
 
@@ -747,7 +747,7 @@ def add_file(page_rel):
 
     data = uploaded.read()
     if len(data) > MAX_SOURCE_SIZE:
-        flash(f"File {safe_name} exceeds max size.", "error")
+        flash(f"File {safe_name} is {len(data):,} bytes (limit: {MAX_SOURCE_SIZE:,} bytes).", "error")
         return redirect(url_for("view_page", page_rel=page_rel))
 
     _write_upload(page_dir, safe_name, data)
