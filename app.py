@@ -48,7 +48,7 @@ gittrack.ensure_repo(PAGES_DIR)
 
 ASY_BINARY = os.environ.get("ASY_BINARY", "asy")
 COMPILE_TIMEOUT = int(os.environ.get("COMPILE_TIMEOUT", "30"))
-MAX_SOURCE_SIZE = int(os.environ.get("MAX_SOURCE_SIZE", "100_000"))
+MAX_SOURCE_SIZE = int(os.environ.get("MAX_SOURCE_SIZE", "500_000"))
 MAX_CONCURRENT_COMPILES = int(os.environ.get("MAX_CONCURRENT_COMPILES", "3"))
 
 import threading
