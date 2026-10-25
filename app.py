@@ -603,7 +603,6 @@ def new_page():
 
         # Write meta.json
         meta = {
-            "id": page_id,
             "title": title,
             "author": author,
             "tags": [t.strip() for t in tags.split(",") if t.strip()],

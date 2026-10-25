@@ -66,7 +66,6 @@ def list_pages(pages_dir: Path, category: str = "") -> list[dict]:
         rel = page_dir.relative_to(pages_dir)
         parts = rel.parts
         meta["category"] = "/".join(parts[:-1]) if len(parts) > 1 else ""
-        meta["id"] = page_dir.name
         meta["rel_path"] = str(rel)
 
         # Thumbnail: first .html in output/
@@ -246,7 +245,6 @@ def search_pages(pages_dir: Path, query: str) -> list[dict]:
             continue
 
         rel = page_dir.relative_to(pages_dir)
-        meta["id"] = page_dir.name
         meta["rel_path"] = str(rel)
         parts = rel.parts
         meta["category"] = "/".join(parts[:-1]) if len(parts) > 1 else ""
