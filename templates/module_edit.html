@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}{% if name %}Edit {{ name }}{% else %}New Module{% endif %} -- Asymptote Wiki{% endblock %}
+{% block content %}
+<article class="example-page">
+    <header class="page-header">
+        <h1>{% if name %}Edit Module{% else %}New Module{% endif %}</h1>
+        {% if name %}
+        <p class="page-meta"><code>import {{ name }};</code></p>
+        {% else %}
+        <p class="page-meta">Shared modules live at the repo root. Examples import them by name.</p>
+        {% endif %}
+    </header>
+
+    <form method="post" enctype="multipart/form-data"
+          action="{{ url_for('new_module') if not name else url_for('edit_module', filename=name ~ '.asy') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        {% if not name %}
+        <div class="form-group">
+            <label for="name">Module name *</label>
+            <input type="text" id="name" name="name" required
+                   placeholder="e.g. plotutils"
+                   pattern="[\w-]+" title="Letters, digits, underscores, hyphens only">
+            <p class="hint">Use a unique name. The main file will be <code>name.asy</code>.</p>
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label for="description">Description (Markdown)</label>
+            {% set input_id = 'description' %}
+            {% set input_name = 'description' %}
+            {% set rows = 3 %}
+            {% set content = description %}
+            {% include "md_toolbar.html" %}
+        </div>
+
+        <div class="form-group">
+            <label for="code">Main file source</label>
+            <textarea id="code" name="code" rows="20" class="code-input">{{ code }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label>Additional files (optional)</label>
+            <p class="hint">Supporting files imported by the main file. Name them
+            {% if name %}{{ name }}-*.asy{% else %}modulename-*.asy{% endif %}
+            to keep the root organized. All files go to the repo root.</p>
+            <input type="file" name="files" multiple accept=".asy">
+            {% if files %}
+            <p class="hint">Current: {{ files | join(', ') }}</p>
+            {% endif %}
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">{% if name %}Save Module{% else %}Create Module{% endif %}</button>
+            <a href="{{ url_for('view_module', filename=name ~ '.asy') if name else url_for('index') }}" class="btn">Cancel</a>
+        </div>
+    </form>
+</article>
+{% endblock %}
+

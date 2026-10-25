@@ -61,17 +61,11 @@ fill(unitcircle,red);">{{ page.main_code if page and page.main_code else '' }}</
 
     <div class="form-group">
         <label for="page_md">Page description (Markdown)</label>
-        <div class="md-toolbar">
-            <button type="button" class="btn btn-sm md-btn" data-md="bold" title="Bold"><strong>B</strong></button>
-            <button type="button" class="btn btn-sm md-btn" data-md="italic" title="Italic"><em>I</em></button>
-            <button type="button" class="btn btn-sm md-btn" data-md="code" title="Inline code">&lt;/&gt;</button>
-            <button type="button" class="btn btn-sm md-btn" data-md="math" title="Math block">$$</button>
-            <button type="button" class="btn btn-sm md-btn" data-md="asy" title="Asy fence">asy</button>
-            <button type="button" class="btn btn-sm md-btn" id="md-preview-toggle" title="Toggle preview">Preview</button>
-        </div>
-        <textarea id="page_md" name="page_md" rows="8" class="code-input">{{ page.page_md if page and page.page_md else '' }}</textarea>
-        <div id="md-preview" class="md-preview" style="display:none;"></div>
-
+        {% set input_id = 'page_md' %}
+        {% set input_name = 'page_md' %}
+        {% set rows = 8 %}
+        {% set content = page.page_md if page and page.page_md else '' %}
+        {% include "md_toolbar.html" %}
     </div>
 
     {% if page %}
@@ -152,81 +146,6 @@ form.addEventListener('submit', (e) => {
         .catch(err => alert('Submit failed: ' + err));
 });
 
-// Markdown toolbar + preview
-const md = document.getElementById('page_md');
-const preview = document.getElementById('md-preview');
-const toggle = document.getElementById('md-preview-toggle');
-
-// Insert markdown syntax around selection
-document.querySelectorAll('.md-btn[data-md]').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const start = md.selectionStart;
-        const end = md.selectionEnd;
-        const sel = md.value.substring(start, end);
-        let before = '', after = '', insert = sel;
-        switch (btn.dataset.md) {
-            case 'bold':   before = '**'; after = '**'; break;
-            case 'italic': before = '*';  after = '*';  break;
-            case 'code':   before = '`';  after = '`';  break;
-            case 'math':   before = '$$'; after = '$$\n'; insert = sel || 'math here'; break;
-            case 'asy':    before = '```asy:'; after = '.asy\n```\n'; insert = sel || 'main'; break;
-        }
-        if (!sel && btn.dataset.md !== 'asy' && btn.dataset.md !== 'math') {
-            insert = 'text';
-        }
-        md.setRangeText(before + insert + after, start, end, 'select');
-        md.focus();
-    });
-});
-
-// Toggle preview (in place of textarea)
-let previewOn = false;
-toggle.addEventListener('click', () => {
-    previewOn = !previewOn;
-    if (previewOn) {
-        let html = md.value
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-            // asy fences -> placeholder
-            .replace(/```asy:(\S+)\n```/g, '<div class="asy-placeholder">[asy: $1]</div>')
-            // display math -> KaTeX render targets
-            .replace(/\$\$([\s\S]*?)\$\$/g, '<div class="math-display" data-math="$1"></div>')
-            // inline math -> KaTeX render targets
-            .replace(/\$([^\n$]+)\$/g, '<span class="math-inline" data-math="$1"></span>')
-            // code blocks
-            .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
-            // inline code
-            .replace(/`([^`]+)`/g, '<code>$1</code>')
-            // bold
-            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-            // italic
-            .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-            // headings
-            .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-            .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-            .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-            // paragraphs
-            .replace(/\n\n/g, '</p><p>')
-            .replace(/\n/g, '<br>');
-        preview.innerHTML = '<p>' + html + '</p>';
-        // Render KaTeX in the preview
-        if (typeof katex !== 'undefined') {
-            preview.querySelectorAll('.math-display[data-math]').forEach(el => {
-                try { katex.render(el.dataset.math, el, {displayMode: true, throwOnError: false}); } catch(e) { el.textContent = el.dataset.math; }
-            });
-            preview.querySelectorAll('.math-inline[data-math]').forEach(el => {
-                try { katex.render(el.dataset.math, el, {displayMode: false, throwOnError: false}); } catch(e) { el.textContent = el.dataset.math; }
-            });
-        }
-        md.style.display = 'none';
-        preview.style.display = 'block';
-        toggle.textContent = 'Edit';
-    } else {
-        md.style.display = '';
-        preview.style.display = 'none';
-        toggle.textContent = 'Preview';
-        md.focus();
-    }
-});
 </script>
 {% endblock %}
 

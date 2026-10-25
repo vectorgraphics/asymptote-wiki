@@ -31,6 +31,13 @@
         {% if tree %}
         {{ render_tree(tree, current_cat) }}
         {% endif %}
+        <h2>Modules</h2>
+        <ul class="cat-tree">
+            {% for mod in modules %}
+            <li><a href="{{ url_for('view_module', filename=mod) }}">{{ mod }}</a></li>
+            {% endfor %}
+            <li><a href="{{ url_for('new_module') }}" class="add-module">+ New Module</a></li>
+        </ul>
         {% if current_cat %}
         <p><a href="/">&larr; Main Page</a></p>
         {% endif %}

@@ -1,0 +1,81 @@
+{# Reusable markdown toolbar + textarea + preview.
+   Requires: input_id, input_name, rows, content #}
+<div class="md-toolbar">
+    <button type="button" class="btn btn-sm md-btn" data-md="bold" title="Bold"><strong>B</strong></button>
+    <button type="button" class="btn btn-sm md-btn" data-md="italic" title="Italic"><em>I</em></button>
+    <button type="button" class="btn btn-sm md-btn" data-md="code" title="Inline code">&lt;/&gt;</button>
+    <button type="button" class="btn btn-sm md-btn" data-md="math" title="Math block">$$</button>
+    <button type="button" class="btn btn-sm md-btn" data-md="asy" title="Asy fence">asy</button>
+    <button type="button" class="btn btn-sm md-btn" id="md-preview-toggle" title="Toggle preview">Preview</button>
+</div>
+<textarea id="{{ input_id }}" name="{{ input_name }}" rows="{{ rows }}" class="code-input">{{ content }}</textarea>
+<div id="md-preview" class="md-preview" style="display:none;"></div>
+
+<script>
+(function() {
+    const md = document.getElementById('{{ input_id }}');
+    const preview = document.getElementById('md-preview');
+    const toggle = document.getElementById('md-preview-toggle');
+    if (!md || !preview || !toggle) return;
+
+    document.querySelectorAll('.md-btn[data-md]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const start = md.selectionStart;
+            const end = md.selectionEnd;
+            const sel = md.value.substring(start, end);
+            let before = '', after = '', insert = sel;
+            switch (btn.dataset.md) {
+                case 'bold':   before = '**'; after = '**'; break;
+                case 'italic': before = '*';  after = '*';  break;
+                case 'code':   before = '`';  after = '`';  break;
+                case 'math':   before = '$$'; after = '$$\n'; insert = sel || 'math here'; break;
+                case 'asy':    before = '```asy:'; after = '.asy\n```\n'; insert = sel || 'main'; break;
+            }
+            if (!sel && btn.dataset.md !== 'asy' && btn.dataset.md !== 'math') {
+                insert = 'text';
+            }
+            md.setRangeText(before + insert + after, start, end, 'select');
+            md.focus();
+        });
+    });
+
+    let previewOn = false;
+    toggle.addEventListener('click', () => {
+        previewOn = !previewOn;
+        if (previewOn) {
+            let html = md.value
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/```asy:(\S+)\n```/g, '<div class="asy-placeholder">[asy: $1]</div>')
+                .replace(/\$\$([\s\S]*?)\$\$/g, '<div class="math-display" data-math="$1"></div>')
+                .replace(/\$([^\n$]+)\$/g, '<span class="math-inline" data-math="$1"></span>')
+                .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+                .replace(/`([^`]+)`/g, '<code>$1</code>')
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+                .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+                .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+                .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/\n/g, '<br>');
+            preview.innerHTML = '<p>' + html + '</p>';
+            if (typeof katex !== 'undefined') {
+                preview.querySelectorAll('.math-display[data-math]').forEach(el => {
+                    try { katex.render(el.dataset.math, el, {displayMode: true, throwOnError: false}); } catch(e) { el.textContent = el.dataset.math; }
+                });
+                preview.querySelectorAll('.math-inline[data-math]').forEach(el => {
+                    try { katex.render(el.dataset.math, el, {displayMode: false, throwOnError: false}); } catch(e) { el.textContent = el.dataset.math; }
+                });
+            }
+            md.style.display = 'none';
+            preview.style.display = 'block';
+            toggle.textContent = 'Edit';
+        } else {
+            md.style.display = '';
+            preview.style.display = 'none';
+            toggle.textContent = 'Preview';
+            md.focus();
+        }
+    });
+})();
+</script>
+

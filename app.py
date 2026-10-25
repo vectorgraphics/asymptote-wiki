@@ -184,17 +184,28 @@ def _safe_upload_name(filename: str) -> str | None:
     return name
 
 
-def _write_upload(page_dir: Path, name: str, data: bytes) -> None:
+def _validate_upload(name: str, data: bytes) -> str | None:
+    """Check an uploaded file. Returns error message or None if OK."""
+    if not name:
+        return "No filename"
+    if Path(name).suffix.lower() not in ALLOWED_UPLOAD_EXTENSIONS:
+        return f"File type not allowed: {name}"
+    if len(data) > MAX_SOURCE_SIZE:
+        return f"File {name} exceeds max size ({len(data):,} / {MAX_SOURCE_SIZE:,} bytes)"
+    return None
+
+
+def _write_upload(page_dir: Path, name: str, data: bytes, strip_settings: bool = True) -> None:
     """Write an uploaded file into page_dir, refusing to escape the directory.
 
-    For .asy files, strips `settings.outformat = ...` lines so the wiki
-    controls the output format at compile time.
+    For .asy files, strips `settings.outformat = ...` lines unless
+    strip_settings is False (e.g. for modules where source is preserved).
     """
     target = (page_dir / name).resolve()
     if not target.is_relative_to(page_dir.resolve()):
         abort(400, description="Invalid filename")
 
-    if name.endswith(".asy"):
+    if name.endswith(".asy") and strip_settings:
         text = data.decode("utf-8", errors="replace")
         text = re.sub(
             r"^\s*settings\.outformat\s*=.*$",
@@ -409,8 +420,10 @@ def index():
     cat_filter = request.args.get("cat", "")
     pages = list_pages(PAGES_DIR, category=cat_filter)
     tree = category_tree(PAGES_DIR)
+    modules = [f.name for f in sorted(PAGES_DIR.iterdir())
+               if f.is_file() and f.suffix == ".asy" and not f.name.startswith(".")]
     return render_template("index.html", pages=pages, tree=tree,
-                           current_cat=cat_filter)
+                           current_cat=cat_filter, modules=modules)
 
 
 @app.route("/search")
@@ -419,8 +432,10 @@ def search():
     query = request.args.get("q", "").strip()
     pages = search_pages(PAGES_DIR, query) if query else []
     tree = category_tree(PAGES_DIR)
+    modules = [f.name for f in sorted(PAGES_DIR.iterdir())
+               if f.is_file() and f.suffix == ".asy" and not f.name.startswith(".")]
     return render_template("index.html", pages=pages, tree=tree,
-                           current_cat="", search_query=query)
+                           current_cat="", search_query=query, modules=modules)
 
 
 @app.route("/page/<path:page_rel>")
@@ -546,8 +561,9 @@ def new_page():
                     return render_template("edit.html", page=None, existing_files=[],
                            default_cat=default_cat), 400
                 data = f.read()
-                if len(data) > MAX_SOURCE_SIZE:
-                    flash(f"File {safe_name} is {len(data):,} bytes (limit: {MAX_SOURCE_SIZE:,} bytes).", "error")
+                err = _validate_upload(safe_name, data)
+                if err:
+                    flash(err, "error")
                     return render_template("edit.html", page=None, existing_files=[],
                            default_cat=default_cat), 400
                 files[safe_name] = data
@@ -677,8 +693,9 @@ def edit_page(page_rel):
                           f"{', '.join(ALLOWED_UPLOAD_EXTENSIONS)}.", "error")
                     return render_template("edit.html", page=page), 400
                 data = f.read()
-                if len(data) > MAX_SOURCE_SIZE:
-                    flash(f"File {safe_name} is {len(data):,} bytes (limit: {MAX_SOURCE_SIZE:,} bytes).", "error")
+                err = _validate_upload(safe_name, data)
+                if err:
+                    flash(err, "error")
                     return render_template("edit.html", page=page), 400
                 _write_upload(page_dir, safe_name, data)
 
@@ -767,8 +784,9 @@ def add_file(page_rel):
         return redirect(url_for("view_page", page_rel=page_rel))
 
     data = uploaded.read()
-    if len(data) > MAX_SOURCE_SIZE:
-        flash(f"File {safe_name} is {len(data):,} bytes (limit: {MAX_SOURCE_SIZE:,} bytes).", "error")
+    err = _validate_upload(safe_name, data)
+    if err:
+        flash(err, "error")
         return redirect(url_for("view_page", page_rel=page_rel))
 
     _write_upload(page_dir, safe_name, data)
@@ -778,6 +796,196 @@ def add_file(page_rel):
     _background_compile_and_commit(page_dir, f"Add file: {safe_name}")
 
     return redirect(url_for("view_page", page_rel=page_rel))
+
+
+def _module_stem(filename: str) -> str:
+    """Get the module name (without .asy) from a filename."""
+    return filename.removesuffix(".asy")
+
+
+def _valid_module_name(name: str) -> bool:
+    return bool(re.fullmatch(r"[\w-]+", name))
+
+
+def _load_module_meta(name: str) -> dict:
+    """Load module metadata (file list) from <name>.json at root."""
+    meta_file = PAGES_DIR / f"{name}.json"
+    if meta_file.exists():
+        try:
+            return json.loads(meta_file.read_text())
+        except (json.JSONDecodeError, OSError):
+            pass
+    return {"files": [f"{name}.asy"]}
+
+
+def _save_module_meta(name: str, files: list) -> None:
+    meta_file = PAGES_DIR / f"{name}.json"
+    meta_file.write_text(json.dumps({"files": files}, indent=2))
+
+
+@app.route("/modules/new", methods=["GET", "POST"])
+def new_module():
+    """Create a new shared module."""
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        description = request.form.get("description", "").strip()
+        code = request.form.get("code", "").strip()
+        if not name:
+            flash("Module name is required.", "error")
+            return render_template("module_edit.html", name=name, description=description, code=code, files=[]), 400
+        if not _valid_module_name(name):
+            flash("Module name may only contain letters, digits, underscores, and hyphens.", "error")
+            return render_template("module_edit.html", name=name, description=description, code=code, files=[]), 400
+        main_file = f"{name}.asy"
+        if (PAGES_DIR / main_file).exists():
+            flash(f"Module '{name}' already exists.", "error")
+            return render_template("module_edit.html", name=name, description=description, code=code, files=[]), 400
+
+        files = [main_file]
+        main_written = False
+        for f in request.files.getlist("files"):
+            if not f.filename:
+                continue
+            safe_name = Path(f.filename).name
+            if not safe_name.endswith(".asy"):
+                continue
+            data = f.read()
+            err = _validate_upload(safe_name, data)
+            if err:
+                flash(err, "error")
+                return render_template("module_edit.html", name=name, description=description, code=code, files=[]), 400
+            _write_upload(PAGES_DIR, safe_name, data, strip_settings=False)
+            if safe_name == main_file:
+                main_written = True
+            elif safe_name not in files:
+                files.append(safe_name)
+        if not main_written and code:
+            (PAGES_DIR / main_file).write_text(code)
+            main_written = True
+        if not main_written:
+            flash("Module source is required (upload a file or paste code).", "error")
+            return render_template("module_edit.html", name=name, description=description, code=code, files=[]), 400
+
+        if description:
+            (PAGES_DIR / f"{name}.md").write_text(description)
+        _save_module_meta(name, files)
+        flash(f"Module {name} created.", "success")
+        gittrack.commit_all(f"Add module: {name}", PAGES_DIR)
+        gittrack.push(PAGES_DIR)
+        return redirect(url_for("view_module", filename=main_file))
+    return render_template("module_edit.html", name="", description="", code="", files=[])
+
+
+@app.route("/modules/<filename>/edit", methods=["GET", "POST"])
+def edit_module(filename):
+    """Edit a shared module at the pages root."""
+    safe_name = Path(filename).name
+    name = _module_stem(safe_name)
+    main_file = f"{name}.asy"
+    mod_file = PAGES_DIR / main_file
+    if not mod_file.exists():
+        abort(404)
+
+    meta = _load_module_meta(name)
+    files = meta.get("files", [main_file])
+
+    if request.method == "GET":
+        code = mod_file.read_text(errors="replace")
+        desc_file = PAGES_DIR / f"{name}.md"
+        description = desc_file.read_text() if desc_file.exists() else ""
+        return render_template("module_edit.html", name=name, description=description, code=code, files=files)
+
+    # POST
+    code = request.form.get("code", "").strip()
+    description = request.form.get("description", "").strip()
+    mod_file.write_text(code)
+    if description:
+        (PAGES_DIR / f"{name}.md").write_text(description)
+    else:
+        desc_file = PAGES_DIR / f"{name}.md"
+        if desc_file.exists():
+            desc_file.unlink()
+
+    # Handle uploaded files
+    for f in request.files.getlist("files"):
+        if not f.filename:
+            continue
+        safe = Path(f.filename).name
+        if not safe.endswith(".asy"):
+            continue
+        data = f.read()
+        err = _validate_upload(safe, data)
+        if err:
+            flash(err, "error")
+            return redirect(url_for("edit_module", filename=safe_name))
+        _write_upload(PAGES_DIR, safe, data, strip_settings=False)
+        if safe not in files:
+            files.append(safe)
+
+    _save_module_meta(name, files)
+    flash(f"Module {name} updated.", "success")
+    gittrack.commit_all(f"Edit module: {name}", PAGES_DIR)
+    gittrack.push(PAGES_DIR)
+    return redirect(url_for("view_module", filename=safe_name))
+
+
+@app.route("/modules/<filename>")
+def view_module(filename):
+    """View a shared module at the pages root."""
+    safe_name = Path(filename).name
+    name = _module_stem(safe_name)
+    main_file = f"{name}.asy"
+    mod_file = PAGES_DIR / main_file
+    if not mod_file.exists() or not mod_file.is_file():
+        abort(404)
+
+    meta = _load_module_meta(name)
+    files = meta.get("files", [main_file])
+
+    # Load all file contents
+    file_sources = []
+    for fname in files:
+        fpath = PAGES_DIR / fname
+        if fpath.exists():
+            file_sources.append({"name": fname, "source": fpath.read_text(errors="replace")})
+
+    # Load description
+    desc_file = PAGES_DIR / f"{name}.md"
+    description = ""
+    if desc_file.exists():
+        description = markdown.markdown(escape(desc_file.read_text()), extensions=["fenced_code"])
+
+    return render_template("module.html", name=name, files=file_sources, description=description)
+
+
+@app.route("/modules/<filename>/raw")
+def serve_module(filename):
+    """Download a shared module (zip if multiple files, single file otherwise)."""
+    safe_name = Path(filename).name
+    name = _module_stem(safe_name)
+    main_file = f"{name}.asy"
+    if not (PAGES_DIR / main_file).exists():
+        abort(404)
+
+    meta = _load_module_meta(name)
+    files = meta.get("files", [main_file])
+
+    if len(files) == 1:
+        return send_from_directory(PAGES_DIR, files[0], as_attachment=True)
+
+    import zipfile
+    import io
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for fname in files:
+            fpath = PAGES_DIR / fname
+            if fpath.exists():
+                zf.write(fpath, arcname=fname)
+        desc_file = PAGES_DIR / f"{name}.md"
+        if desc_file.exists():
+            zf.write(desc_file, arcname=f"{name}.md")
+    buffer.seek(0)
+    return send_file(buffer, mimetype="application/zip", as_attachment=True, download_name=f"{name}.zip")
 
 
 @app.route("/page/<path:page_rel>/files/<filename>/delete", methods=["POST"])
