@@ -14,7 +14,6 @@ EnvironmentFile=/etc/asywiki/secret.env
 Environment=WIKI_HOST=127.0.0.1
 Environment=WIKI_PORT=8080
 Environment=COMPILE_TIMEOUT=120
-Environment=MAX_SOURCE_SIZE=500000
 Environment=WIKI_PREFIX=/wiki
 # Single worker: the compile concurrency semaphore is per-process.
 # --timeout 130: page creation compiles synchronously (up to 120s per
