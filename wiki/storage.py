@@ -196,15 +196,18 @@ def move_page(pages_dir: Path, old_rel: str, new_category: str) -> bool:
 
 
 def next_id(pages_dir: Path, title: str = "") -> str:
-    """Generate a page directory name from the title slug.
-    If the slug is already taken (anywhere), append -2, -3, etc.
+    """Generate a page directory name from the title.
+    Uses the title as-is (stripped of path-unsafe chars).
+    If the name is already taken (anywhere), append -2, -3, etc.
     """
     import re
     if title:
         title = re.sub(r"\.asy$", "", title)  # strip extension if present
-        slug = re.sub(r"[^\w\s-]", "", title.lower()).strip()
-        slug = re.sub(r"[\s]+", "-", slug)[:40]
+        # Remove only characters that are unsafe in a path
+        slug = re.sub(r'[/\\:\0]', "", title).strip()
     else:
+        slug = "untitled"
+    if not slug:
         slug = "untitled"
     base = slug
     n = 2
