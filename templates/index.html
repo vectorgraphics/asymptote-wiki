@@ -2,7 +2,7 @@
 {% extends "base.html" %}
 {% block title %}
 {% if search_query %}Search: {{ search_query }}{% elif current_cat %}{{ current_cat }}{% else %}Main Page{% endif %} -- Asymptote Wiki{% endblock %}
-{% macro render_tree(categories, depth, current_cat) %}
+{% macro render_tree(categories, current_cat) %}
 <ul class="cat-tree">
     {% for cat in categories %}
     <li>
@@ -11,14 +11,7 @@
             {{ cat.name }}
         </a>
         {% if cat.children %}
-        {% if depth < 2 %}
-        {{ render_tree(cat.children, depth + 1, current_cat) }}
-        {% else %}
-        <details>
-            <summary>+ {{ cat.children|length }} more</summary>
-            {{ render_tree(cat.children, depth + 1, current_cat) }}
-        </details>
-        {% endif %}
+        {{ render_tree(cat.children, current_cat) }}
         {% endif %}
     </li>
     {% endfor %}
@@ -36,7 +29,7 @@
 
         <h2>Categories</h2>
         {% if tree %}
-        {{ render_tree(tree, 0, current_cat) }}
+        {{ render_tree(tree, current_cat) }}
         {% endif %}
         {% if current_cat %}
         <p><a href="/">&larr; Main Page</a></p>
