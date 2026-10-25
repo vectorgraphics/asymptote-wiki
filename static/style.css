@@ -80,7 +80,7 @@ footer {
 .sidebar h2 { font-size: 1rem; margin-bottom: 0.5rem; }
 .cat-tree { list-style: none; padding: 0; width: max-content; }
 .cat-tree li { margin: 0.15rem 0; }
-.cat-tree ul { list-style: none; padding-left: 0.5rem; }
+.cat-tree ul { list-style: none; padding-left: 1rem; }
 .cat-tree a {
     display: block;
     padding: 0.2rem 0.5rem;
