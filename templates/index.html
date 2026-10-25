@@ -29,7 +29,7 @@
     <aside class="sidebar">
         <form action="{{ url_for('search') }}" method="get" class="search-form">
             <input type="text" name="q" placeholder="Search examples..."
-                   value="{{ search_query or '' }}" autofocus id="search-input">
+                   value="{{ search_query or '' }}" id="search-input">
             <button type="button" class="search-clear" id="search-clear"
                     style="display:none;" title="Clear">&times;</button>
         </form>
