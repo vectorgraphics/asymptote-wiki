@@ -41,7 +41,7 @@
             {# Category and example pages have their own back/up button in the
                title row, so hide this one there. #}
             {% if (request.path != url_for('index') or request.args.get('cat')) and not (is_category_page is defined and is_category_page) and not (is_example_page is defined and is_example_page) %}
-            <a href="{{ _bk_href }}" class="btn btn-sm"><svg class="nav-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M12 5l-7 7 7 7"/></svg> {{ _bk_label }}</a>
+            <a href="{{ _bk_href }}" class="btn btn-sm"><svg class="nav-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.75 12H3.25M10.25 5l-7 7 7 7"/></svg> {{ _bk_label }}</a>
             {% endif %}
             {# Prefill the New Example category: from ?cat= (index) or the
                current category page ("cat" is set only by view_category). #}
