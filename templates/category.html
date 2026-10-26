@@ -5,9 +5,9 @@
 {% set back_parent = url_for('view_category', cat=parent) if parent else url_for('index') %}
 {% set back_parent_label = parent.split('/')[-1] if parent else 'Main Page' %}
 <div class="gallery-main">
-    <div class="cat-title-row">
-        <h1>{{ cat_name }}</h1>
-        <a href="{{ back_parent }}" class="btn btn-sm">&uarr; {{ back_parent_label }}</a>
+    <h1>{{ cat_name }}</h1>
+    <div class="gallery-nav">
+        <a href="{{ back_parent }}" class="btn btn-sm"><svg class="nav-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg> {{ back_parent_label }}</a>
     </div>
 
     {% if subcats %}
@@ -23,6 +23,10 @@
     {% else %}
     <p>No examples in this category yet. <a href="{{ url_for('new_page', cat=cat) }}">Contribute one!</a></p>
     {% endif %}
+
+    <div class="gallery-nav">
+        <a href="{{ back_parent }}" class="btn btn-sm"><svg class="nav-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg> {{ back_parent_label }}</a>
+    </div>
 </div>
 {% endblock %}
 
