@@ -266,6 +266,10 @@ footer {
 }
 .add-file-form input[type="file"] {
     font-size: 0.85rem;
+    /* Hug the control: the UA default width (~258px) left a wide empty gap
+       before the Add/Replace button. 200px fits "No file chosen" + "Choose
+       file" with no clipping. */
+    width: 200px;
 }
 
 /* Page actions */
