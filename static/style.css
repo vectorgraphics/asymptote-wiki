@@ -226,6 +226,8 @@ footer {
     border-top: 1px solid var(--color-border);
     padding-top: 1rem;
 }
+/* The figure title sits right at the top of its card. */
+.asy-output h3 { margin-top: 0; }
 .asy-svg svg { max-width: 100%; height: auto; }
 .asy-html iframe {
     border: none;
