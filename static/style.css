@@ -93,8 +93,8 @@ footer {
 .subcat-header {
     display: flex;
     align-items: baseline;
-    justify-content: space-between;
     gap: 1rem;
+    flex-wrap: wrap;
     margin-top: 1rem;
 }
 .gallery-main { min-width: 0; }

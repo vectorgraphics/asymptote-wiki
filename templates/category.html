@@ -8,8 +8,8 @@
     <h1>{{ cat_name }}</h1>
 
     <div class="subcat-header">
-        {% if subcats %}<h2>Subcategories</h2>{% endif %}
         <a href="{{ back_parent }}" class="btn btn-sm">&uarr; {{ back_parent_label }}</a>
+        {% if subcats %}<h2>Subcategories</h2>{% endif %}
     </div>
 
     {% if subcats %}
