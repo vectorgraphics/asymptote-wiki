@@ -471,6 +471,18 @@ def view_page(page_rel):
     if page is None:
         abort(404)
 
+    # Prev/next navigation within this page's folder (its category, or root).
+    cat = page.get("category", "")
+    siblings = [p for p in list_pages(PAGES_DIR, category=cat) if p.get("category", "") == cat]
+    prev_page = next_page = None
+    for i, p in enumerate(siblings):
+        if p["rel_path"] == page["rel_path"]:
+            if i > 0:
+                prev_page = siblings[i - 1]["rel_path"]
+            if i + 1 < len(siblings):
+                next_page = siblings[i + 1]["rel_path"]
+            break
+
     page_dir = _safe_page_dir(page_rel)
     md_file = page_dir / "page.md"
     md_text = md_file.read_text() if md_file.exists() else ""
@@ -500,6 +512,9 @@ def view_page(page_rel):
         content_html=content_html,
         source_files=source_files,
         page_rel=page_rel,
+        prev_page=prev_page,
+        next_page=next_page,
+        is_example_page=True,
     )
 
 
