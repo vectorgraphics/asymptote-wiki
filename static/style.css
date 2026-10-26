@@ -221,6 +221,11 @@ footer {
     text-align: center;
     background: #fff;
 }
+/* Separate stacked figures: a divider before every figure except the first. */
+.page-content > .asy-output:not(:first-child) {
+    border-top: 1px solid var(--color-border);
+    padding-top: 1rem;
+}
 .asy-svg svg { max-width: 100%; height: auto; }
 .asy-html iframe {
     border: none;
