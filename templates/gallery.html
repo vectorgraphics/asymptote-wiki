@@ -5,7 +5,8 @@
     <div class="card">
         <a href="{{ url_for('view_page', page_rel=page['rel_path']) }}" class="card-thumb">
             {% if page.thumbnail %}
-                <iframe src="{{ page.thumbnail }}" class="thumb-frame"
+                <iframe src="{{ page.thumbnail }}"
+                        class="thumb-frame{% if page.is_3d %} thumb-frame-3d{% else %} thumb-frame-2d{% endif %}"
                         scrolling="no" tabindex="-1"></iframe>
             {% else %}
                 <div class="no-thumb">No preview</div>

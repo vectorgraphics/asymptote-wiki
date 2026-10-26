@@ -28,6 +28,21 @@ from pathlib import Path
 from typing import Optional
 
 
+def _output_is_interactive(html_path: Path) -> bool:
+    """
+    Return True if a compiled HTML output is an interactive 3D/WebGL figure
+    (contains a <canvas>, produced by asygl); False for a static 2D SVG.
+
+    Mirrors the canvas-vs-viewBox distinction in app._output_aspect_ratio and
+    drives the gallery affordance: interactive previews are draggable, not
+    click-through links.
+    """
+    try:
+        return "<canvas" in html_path.read_text(errors="replace")
+    except OSError:
+        return False
+
+
 def list_pages(pages_dir: Path, category: str = "") -> list[dict]:
     """
     Return a list of page metadata dicts.
@@ -40,6 +55,7 @@ def list_pages(pages_dir: Path, category: str = "") -> list[dict]:
       - "id": the page directory name (e.g. "0001")
       - "category": relative path from pages_dir (e.g. "3D/Surfaces")
       - "thumbnail": path to first output HTML (or None)
+      - "is_3d": True if the thumbnail is an interactive WebGL figure
     """
     pages = []
     search_dir = pages_dir / category if category else pages_dir
@@ -71,11 +87,14 @@ def list_pages(pages_dir: Path, category: str = "") -> list[dict]:
         # Thumbnail: first .html in output/
         output_dir = page_dir / "output"
         thumbnail = None
+        is_3d = False
         if output_dir.exists():
             htmls = sorted(output_dir.glob("*.html"))
             if htmls:
                 thumbnail = f"/page/{meta['rel_path']}/output/{htmls[0].name}"
+                is_3d = _output_is_interactive(output_dir / htmls[0].name)
         meta["thumbnail"] = thumbnail
+        meta["is_3d"] = is_3d
         pages.append(meta)
 
     return pages
@@ -252,11 +271,14 @@ def search_pages(pages_dir: Path, query: str) -> list[dict]:
         # Thumbnail
         output_dir = page_dir / "output"
         thumbnail = None
+        is_3d = False
         if output_dir.exists():
             htmls = sorted(output_dir.glob("*.html"))
             if htmls:
                 thumbnail = f"/page/{meta['rel_path']}/output/{htmls[0].name}"
+                is_3d = _output_is_interactive(output_dir / htmls[0].name)
         meta["thumbnail"] = thumbnail
+        meta["is_3d"] = is_3d
 
         match_fields = []
 

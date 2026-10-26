@@ -147,6 +147,24 @@ footer {
     height: 100%;
     border: none;
 }
+/* 2D previews are static: let pointer events fall through to the surrounding
+   <a class="card-thumb"> so clicking the thumbnail opens the page. (Losing
+   pointer events is harmless -- there is nothing inside to interact with.) */
+.thumb-frame-2d {
+    pointer-events: none;
+}
+/* 3D previews are live WebGL viewports: keep them interactive and signal
+   "drag me" rather than "click me". */
+.thumb-frame-3d {
+    cursor: grab;
+}
+.thumb-frame-3d:active {
+    cursor: grabbing;
+}
+/* Subtle press cue on the (clickable) 2D thumbnails. */
+.card-thumb:hover .thumb-frame-2d {
+    filter: brightness(0.97);
+}
 .no-thumb { color: #9ca3af; font-style: italic; }
 
 .card-body { padding: 1rem; }
