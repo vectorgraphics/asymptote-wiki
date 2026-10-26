@@ -270,7 +270,7 @@ footer {
 
 /* Page actions */
 .page-actions {
-    margin-top: 2rem;
+    margin: 1rem 0;
     display: flex;
     gap: 0.75rem;
     align-items: center;
