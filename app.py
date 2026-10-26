@@ -259,6 +259,46 @@ ASY_FENCE_RE = re.compile(
 )
 
 
+def _output_aspect_ratio(path: Path) -> str:
+    """
+    Return a CSS aspect-ratio value (e.g. "151.05 / 150") matching the figure
+    in a compiled output file, so the wrapping iframe can size itself to the
+    figure exactly -- no letterbox/whitespace and no distortion.
+
+    2D (dvisvgm SVG): from the SVG viewBox (its width / height).
+    3D (WebGL): from the <canvas width/height> values (asygl with absolute
+    off re-renders at whatever size the iframe gives it, so no scaling/blur).
+    Falls back to square ("1 / 1") if neither can be found.
+    """
+    try:
+        text = path.read_text(errors="replace")
+    except OSError:
+        return "1 / 1"
+
+    m = re.search(r"viewBox=[\"']([^\"']+)[\"']", text)
+    if m:
+        nums = m.group(1).replace(",", " ").split()
+        if len(nums) >= 4:
+            try:
+                w, h = float(nums[-2]), float(nums[-1])
+                if w > 0 and h > 0:
+                    return f"{w} / {h}"
+            except ValueError:
+                pass
+
+    cw = re.search(r"<canvas[^>]*\bwidth=[\"']([\d.]+)[\"']", text)
+    ch = re.search(r"<canvas[^>]*\bheight=[\"']([\d.]+)[\"']", text)
+    if cw and ch:
+        try:
+            w, h = float(cw.group(1)), float(ch.group(1))
+            if w > 0 and h > 0:
+                return f"{w} / {h}"
+        except ValueError:
+            pass
+
+    return "1 / 1"
+
+
 def _auto_display(page_dir: Path) -> str:
     """
     Auto-generate display HTML for all .asy files that have compiled output.
@@ -277,11 +317,12 @@ def _auto_display(page_dir: Path) -> str:
         name_html = escape(src_name)
 
         url = url_for("serve_output", page_rel=str(page_dir.relative_to(PAGES_DIR)), filename=html_file.name)
+        ratio = _output_aspect_ratio(html_file)
         display = (
             f"<div class='asy-output asy-html'>"
             f"<h3>{name_html}</h3>"
             f"<iframe src='{url}' frameborder='0' "
-            f"style='width:100%;min-height:400px;'></iframe>"
+            f"style='width:100%;aspect-ratio:{ratio};'></iframe>"
             f"<div class='asy-output-bar'>"
             f"<a href='{url}' target='_blank'>Open fullscreen</a>"
             f"</div></div>"
@@ -360,10 +401,11 @@ def compile_markdown_with_asy(md_text: str, page_dir: Path) -> str:
         # Build the display: iframe for html, image for svg, link for others
         if fmt == "html":
             url = url_for("serve_output", page_rel=rel, filename=f"{filename}.html")
+            ratio = _output_aspect_ratio(out_file)
             display_html = (
                 f"<div class='asy-output asy-html'>"
                 f"<iframe src='{url}' frameborder='0' "
-                f"style='width:100%;min-height:400px;'></iframe>"
+                f"style='width:100%;aspect-ratio:{ratio};'></iframe>"
                 f"<div class='asy-output-bar'>"
                 f"<a href='{url}' target='_blank'>Open fullscreen</a>"
                 f"</div></div>"
