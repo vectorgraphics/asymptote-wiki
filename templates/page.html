@@ -1,20 +1,12 @@
 
 {% extends "base.html" %}
+{% from "example_nav.html" import example_nav %}
 {% block title %}{{ page.title }} - Asymptote Wiki{% endblock %}
 {% block content %}
 <article class="example-page">
     <header class="page-header">
         <h1>{{ page.title }}</h1>
-        <div class="example-nav">
-            <a href="{% if page.category %}{{ url_for('view_category', cat=page.category) }}{% else %}{{ url_for('index') }}{% endif %}"
-               class="btn btn-sm" title="Up to {{ page.category.split('/')[-1] if page.category else 'Main Page' }}">&uarr; {{ page.category.split('/')[-1] if page.category else 'Main Page' }}</a>
-            {% if prev_page %}
-            <a href="{{ url_for('view_page', page_rel=prev_page) }}" class="btn btn-sm" title="Previous example in this folder">&larr;</a>
-            {% endif %}
-            {% if next_page %}
-            <a href="{{ url_for('view_page', page_rel=next_page) }}" class="btn btn-sm" title="Next example in this folder">&rarr;</a>
-            {% endif %}
-        </div>
+        <div class="example-nav">{{ example_nav(page, prev_page, next_page) }}</div>
         <p class="page-meta">
             {% if page.author %}Submitted by <strong>{{ page.author }}</strong> &middot;{% endif %}
             {{ page.created[:10] if page.created else '' }}
@@ -70,11 +62,7 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-danger">Delete</button>
         </form>
-        {% if page.category %}
-        <a href="{{ url_for('view_category', cat=page.category) }}" class="btn">Back to {{ page.category.split('/')[-1] }}</a>
-        {% else %}
-        <a href="{{ url_for('index') }}" class="btn">Back to Main Page</a>
-        {% endif %}
+        {{ example_nav(page, prev_page, next_page) }}
     </div>
 </article>
 <script>

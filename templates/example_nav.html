@@ -1,0 +1,12 @@
+{# Shared example-folder pager: up to folder + previous/next (when present). #}
+{% macro example_nav(page, prev_page, next_page) -%}
+    <a href="{% if page.category %}{{ url_for('view_category', cat=page.category) }}{% else %}{{ url_for('index') }}{% endif %}"
+       class="btn btn-sm" title="Up to {{ page.category.split('/')[-1] if page.category else 'Main Page' }}">&uarr; {{ page.category.split('/')[-1] if page.category else 'Main Page' }}</a>
+    {% if prev_page %}
+    <a href="{{ url_for('view_page', page_rel=prev_page) }}" class="btn btn-sm" title="Previous example in this folder">&larr;</a>
+    {% endif %}
+    {% if next_page %}
+    <a href="{{ url_for('view_page', page_rel=next_page) }}" class="btn btn-sm" title="Next example in this folder">&rarr;</a>
+    {% endif %}
+{%- endmacro %}
+
