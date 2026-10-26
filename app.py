@@ -281,8 +281,7 @@ def _auto_display(page_dir: Path) -> str:
             f"<div class='asy-output asy-html'>"
             f"<h3>{name_html}</h3>"
             f"<iframe src='{url}' frameborder='0' "
-            f"style='width:100%;min-height:300px;border:1px solid #e5e7eb;"
-            f"border-radius:6px;'></iframe>"
+            f"style='width:100%;min-height:300px;'></iframe>"
             f"<div class='asy-output-bar'>"
             f"<a href='{url}' target='_blank'>Open fullscreen</a>"
             f"</div></div>"
@@ -364,8 +363,7 @@ def compile_markdown_with_asy(md_text: str, page_dir: Path) -> str:
             display_html = (
                 f"<div class='asy-output asy-html'>"
                 f"<iframe src='{url}' frameborder='0' "
-                f"style='width:100%;min-height:300px;border:1px solid #e5e7eb;"
-                f"border-radius:6px;'></iframe>"
+                f"style='width:100%;min-height:300px;'></iframe>"
                 f"<div class='asy-output-bar'>"
                 f"<a href='{url}' target='_blank'>Open fullscreen</a>"
                 f"</div></div>"
@@ -383,8 +381,7 @@ def compile_markdown_with_asy(md_text: str, page_dir: Path) -> str:
             url = url_for("serve_output", page_rel=rel, filename=f"{filename}.pdf")
             display_html = (
                 f"<div class='asy-output asy-pdf'>"
-                f"<iframe src='{url}' style='width:100%;height:400px;"
-                f"border:1px solid #e5e7eb;border-radius:6px;'></iframe></div>"
+                f"<iframe src='{url}' style='width:100%;height:400px;'></iframe></div>"
             )
         else:
             url = url_for("serve_output", page_rel=rel, filename=f"{filename}.{fmt}")

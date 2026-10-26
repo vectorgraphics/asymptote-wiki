@@ -189,9 +189,6 @@ footer {
 .asy-output {
     margin: 1rem 0;
     text-align: center;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    overflow: hidden;
     background: #fff;
 }
 .asy-svg svg { max-width: 100%; height: auto; }

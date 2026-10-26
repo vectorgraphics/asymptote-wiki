@@ -4,7 +4,11 @@
 {% block content %}
 <article class="example-page">
     <header class="page-header">
-        <h1>{{ page.title }}</h1>
+        <div class="cat-title-row">
+            <h1>{{ page.title }}</h1>
+            <a href="{% if page.category %}{{ url_for('view_category', cat=page.category) }}{% else %}{{ url_for('index') }}{% endif %}"
+               class="btn btn-sm" title="Back to {{ page.category.split('/')[-1] if page.category else 'Main Page' }}">&larr; {{ page.category.split('/')[-1] if page.category else 'Main Page' }}</a>
+        </div>
         <p class="page-meta">
             {% if page.author %}Submitted by <strong>{{ page.author }}</strong> &middot;{% endif %}
             {{ page.created[:10] if page.created else '' }}
