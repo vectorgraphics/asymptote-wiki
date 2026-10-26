@@ -10,7 +10,12 @@
     --color-border: #e5e7eb;
     --color-card-bg: #fff;
     --color-code-bg: #f3f4f6;
-    --max-width: 960px;
+    /* Overall content column: galleries, figures, iframes and forms can use
+       the full width (fluid, capped at this ceiling on very wide screens). */
+    --max-width: 1200px;
+    /* Comfortable reading measure for prose/descriptions; kept narrower than
+       the content column so text stays readable on wide screens. */
+    --prose-max: 720px;
     --radius: 6px;
 }
 
@@ -162,7 +167,10 @@ footer {
 
 /* Example page */
 .example-page { max-width: var(--max-width); }
-.page-header { margin-bottom: 1.5rem; }
+.page-header {
+    margin-bottom: 1.5rem;
+    max-width: var(--prose-max);
+}
 .page-header h1 { margin-bottom: 0.25rem; }
 .page-meta { color: #6b7280; font-size: 0.9rem; }
 
@@ -171,6 +179,11 @@ footer {
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
     padding: 1.5rem;
+}
+/* Reading measure: keep prose at a comfortable width, but let figures and
+   collapsible source blocks (.asy-output / .asy-source) span the full column. */
+.page-content > :not(.asy-output):not(.asy-source) {
+    max-width: var(--prose-max);
 }
 
 /* Asymptote output blocks */
