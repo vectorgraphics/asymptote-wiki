@@ -448,10 +448,17 @@ def view_category(cat):
     if not _valid_category(raw) or not cat_dir.exists() or (cat_dir / "meta.json").exists():
         abort(404)
     all_pages = list_pages(PAGES_DIR, category=raw)
-    depth = len(raw.split("/"))
+    page_rels = {p["rel_path"] for p in all_pages}
     pages = [p for p in all_pages if p["category"] == raw]
-    subcats = sorted({p["category"] for p in all_pages
-                      if len(p["category"].split("/")) == depth + 1})
+    # Subcategories are direct subdirectories that are not themselves pages.
+    # Enumerate from the filesystem (not from pages) so that an empty category
+    # -- one with no examples of its own -- still lists its subcategories.
+    subcats = sorted(
+        f"{raw}/{sub.name}"
+        for sub in cat_dir.iterdir()
+        if sub.is_dir() and not sub.name.startswith(".")
+        and f"{raw}/{sub.name}" not in page_rels
+    )
     parts = raw.split("/")
     parent = "/".join(parts[:-1])
     ctx = dict(pages=pages, subcats=subcats, cat=raw, cat_name=parts[-1], parent=parent)
