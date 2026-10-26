@@ -461,7 +461,8 @@ def view_category(cat):
     )
     parts = raw.split("/")
     parent = "/".join(parts[:-1])
-    ctx = dict(pages=pages, subcats=subcats, cat=raw, cat_name=parts[-1], parent=parent)
+    ctx = dict(pages=pages, subcats=subcats, cat=raw, cat_name=parts[-1], parent=parent,
+               is_category_page=True)
     if parent:
         # Top nav "back" button returns to the parent category; top-level
         # categories fall back to the Main Page (handled in the template).

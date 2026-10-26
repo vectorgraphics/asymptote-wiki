@@ -38,7 +38,9 @@
                 {% set _bk_href = url_for('view_category', cat=default_cat) %}
                 {% set _bk_label = default_cat.split('/')[-1] %}
             {% endif %}
-            {% if request.path != url_for('index') or request.args.get('cat') %}
+            {# Category pages have their own back button in the title row, so hide
+               this one there. #}
+            {% if (request.path != url_for('index') or request.args.get('cat')) and not (is_category_page is defined and is_category_page) %}
             <a href="{{ _bk_href }}" class="btn btn-sm">&larr; {{ _bk_label }}</a>
             {% endif %}
             {# Prefill the New Example category: from ?cat= (index) or the
