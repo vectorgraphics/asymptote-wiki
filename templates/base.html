@@ -22,8 +22,24 @@
     <header>
         <nav>
             <a href="{{ url_for('index') }}" class="logo">Asymptote Wiki</a>
+            {# Top "back" button: return to the parent menu (category), or the
+               Main Page when there is no parent. Priority: explicit back_href
+               (category pages) > the page's own category (view/edit) > the
+               category a new example is being created in > Main Page. #}
+            {% set _bk_href = url_for('index') %}
+            {% set _bk_label = 'Main Page' %}
+            {% if back_href is defined and back_href %}
+                {% set _bk_href = back_href %}
+                {% set _bk_label = back_label %}
+            {% elif page is defined and page and page.category %}
+                {% set _bk_href = url_for('view_category', cat=page.category) %}
+                {% set _bk_label = page.category.split('/')[-1] %}
+            {% elif default_cat is defined and default_cat %}
+                {% set _bk_href = url_for('view_category', cat=default_cat) %}
+                {% set _bk_label = default_cat.split('/')[-1] %}
+            {% endif %}
             {% if request.path != url_for('index') or request.args.get('cat') %}
-            <a href="{{ back_href or url_for('index') }}" class="btn btn-sm">&larr; {{ back_label or 'Main Page' }}</a>
+            <a href="{{ _bk_href }}" class="btn btn-sm">&larr; {{ _bk_label }}</a>
             {% endif %}
             {# Prefill the New Example category: from ?cat= (index) or the
                current category page ("cat" is set only by view_category). #}
