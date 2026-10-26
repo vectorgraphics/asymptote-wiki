@@ -2,11 +2,17 @@
 {% extends "base.html" %}
 {% block title %}{{ cat_name }} -- Asymptote Wiki{% endblock %}
 {% block content %}
+{% set back_parent = url_for('view_category', cat=parent) if parent else url_for('index') %}
+{% set back_parent_label = parent.split('/')[-1] if parent else 'Main Page' %}
 <div class="gallery-main">
     <h1>{{ cat_name }}</h1>
 
+    <div class="subcat-header">
+        {% if subcats %}<h2>Subcategories</h2>{% endif %}
+        <a href="{{ back_parent }}" class="btn btn-sm">&uarr; {{ back_parent_label }}</a>
+    </div>
+
     {% if subcats %}
-    <h2>Subcategories</h2>
     <ul class="cat-tree">
         {% for s in subcats %}
         <li><a href="{{ url_for('view_category', cat=s) }}">{{ s.split('/')[-1] }}</a></li>
