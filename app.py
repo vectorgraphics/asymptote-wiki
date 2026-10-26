@@ -837,19 +837,23 @@ def _valid_module_name(name: str) -> bool:
 
 
 def _load_module_meta(name: str) -> dict:
-    """Load module metadata (file list) from <name>.json at root."""
+    """Load module metadata (file list + author) from <name>.json at root."""
     meta_file = PAGES_DIR / f"{name}.json"
     if meta_file.exists():
         try:
-            return json.loads(meta_file.read_text())
+            meta = json.loads(meta_file.read_text())
         except (json.JSONDecodeError, OSError):
-            pass
-    return {"files": [f"{name}.asy"]}
+            meta = {}
+    else:
+        meta = {}
+    meta.setdefault("files", [f"{name}.asy"])
+    meta.setdefault("author", "")
+    return meta
 
 
-def _save_module_meta(name: str, files: list) -> None:
+def _save_module_meta(name: str, files: list, author: str = "") -> None:
     meta_file = PAGES_DIR / f"{name}.json"
-    meta_file.write_text(json.dumps({"files": files}, indent=2))
+    meta_file.write_text(json.dumps({"files": files, "author": author}, indent=2))
 
 
 @app.route("/modules/new", methods=["GET", "POST"])
@@ -859,6 +863,7 @@ def new_module():
         name = request.form.get("name", "").strip()
         description = request.form.get("description", "").strip()
         code = request.form.get("code", "").strip()
+        author = request.form.get("author", "").strip()
         if not name:
             flash("Module name is required.", "error")
             return render_template("module_edit.html", name=name, description=description, code=code, files=[]), 400
@@ -897,7 +902,7 @@ def new_module():
 
         if description:
             (PAGES_DIR / f"{name}.md").write_text(description)
-        _save_module_meta(name, files)
+        _save_module_meta(name, files, author)
         flash(f"Module {name} created.", "success")
         gittrack.commit_all(f"Add module: {name}", PAGES_DIR)
         gittrack.push(PAGES_DIR)
@@ -917,16 +922,19 @@ def edit_module(filename):
 
     meta = _load_module_meta(name)
     files = meta.get("files", [main_file])
+    author = meta.get("author", "")
 
     if request.method == "GET":
         code = mod_file.read_text(errors="replace")
         desc_file = PAGES_DIR / f"{name}.md"
         description = desc_file.read_text() if desc_file.exists() else ""
-        return render_template("module_edit.html", name=name, description=description, code=code, files=files)
+        return render_template("module_edit.html", name=name, description=description, code=code, files=files, author=author)
 
     # POST
     code = request.form.get("code", "").strip()
     description = request.form.get("description", "").strip()
+    author = request.form.get("author", author).strip()
+    edit_summary = request.form.get("edit_summary", "").strip()
     mod_file.write_text(code)
     if description:
         (PAGES_DIR / f"{name}.md").write_text(description)
@@ -951,9 +959,12 @@ def edit_module(filename):
         if safe not in files:
             files.append(safe)
 
-    _save_module_meta(name, files)
+    _save_module_meta(name, files, author)
     flash(f"Module {name} updated.", "success")
-    gittrack.commit_all(f"Edit module: {name}", PAGES_DIR)
+    msg = f"Edit module: {name}"
+    if edit_summary:
+        msg += f" -- {edit_summary}"
+    gittrack.commit_all(msg, PAGES_DIR)
     gittrack.push(PAGES_DIR)
     return redirect(url_for("view_module", filename=safe_name))
 
@@ -984,7 +995,8 @@ def view_module(filename):
     if desc_file.exists():
         description = markdown.markdown(escape(desc_file.read_text()), extensions=["fenced_code"])
 
-    return render_template("module.html", name=name, files=file_sources, description=description)
+    return render_template("module.html", name=name, files=file_sources,
+                           description=description, author=meta.get("author", ""))
 
 
 @app.route("/modules/<filename>/raw")

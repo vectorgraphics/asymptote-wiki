@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "author_field.html" import author_field %}
 {% block title %}{% if name %}Edit {{ name }}{% else %}New Module{% endif %} -- Asymptote Wiki{% endblock %}
 {% block content %}
 <article class="example-page">
@@ -25,6 +26,8 @@
         </div>
         {% endif %}
 
+        {{ author_field(author if author else '') }}
+
         <div class="form-group">
             <label for="description">Description (Markdown)</label>
             {% set input_id = 'description' %}
@@ -49,6 +52,10 @@
             <p class="hint">Current: {{ files | join(', ') }}</p>
             {% endif %}
         </div>
+
+        {% if name %}
+        {% include "edit_summary_field.html" %}
+        {% endif %}
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">{% if name %}Save Module{% else %}Create Module{% endif %}</button>

@@ -1,5 +1,6 @@
 
 {% extends "base.html" %}
+{% from "author_field.html" import author_field %}
 {% block title %}
   {% if page %}Edit: {{ page.title }}{% else %}New Example{% endif %}
   -- Asymptote Wiki
@@ -18,13 +19,7 @@
                placeholder="e.g. Three-Set Venn Diagram">
     </div>
 
-    <div class="form-row">
-        <div class="form-group">
-            <label for="author">Your name</label>
-            <input type="text" id="author" name="author"
-                   value="{{ page.author if page and page.author else '' }}">
-        </div>
-    </div>
+    {{ author_field(page.author if page and page.author else '') }}
 
     <div class="form-row">
         <div class="form-group">
@@ -69,12 +64,7 @@ fill(unitcircle,red);">{{ page.main_code if page and page.main_code else '' }}</
     </div>
 
     {% if page %}
-    <div class="form-group">
-        <label for="edit_summary">Edit summary (optional)</label>
-        <input type="text" id="edit_summary" name="edit_summary"
-               placeholder="e.g. Fixed color, updated to new asy syntax"
-               maxlength="200">
-    </div>
+    {% include "edit_summary_field.html" %}
     {% endif %}
 
     <div class="form-actions">
