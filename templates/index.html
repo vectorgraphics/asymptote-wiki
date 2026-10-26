@@ -1,7 +1,7 @@
 
 {% extends "base.html" %}
 {% block title %}
-{% if search_query %}Search: {{ search_query }}{% elif current_cat %}{{ current_cat }}{% else %}Main Page{% endif %} -- Asymptote Wiki{% endblock %}
+{% if current_cat %}{{ current_cat }}{% else %}Main Page{% endif %} -- Asymptote Wiki{% endblock %}
 {% macro render_tree(categories, current_cat) %}
 <ul class="cat-tree">
     {% for cat in categories %}
@@ -20,12 +20,7 @@
 {% block content %}
 <div class="index-layout">
     <aside class="sidebar">
-        <form action="{{ url_for('search') }}" method="get" class="search-form">
-            <input type="text" name="q" placeholder="Search examples..."
-                   value="{{ search_query or '' }}" id="search-input">
-            <button type="button" class="search-clear" id="search-clear"
-                    style="display:none;" title="Clear">&times;</button>
-        </form>
+        {% include "search_form.html" %}
 
         <h2>Categories</h2>
         {% if tree %}
@@ -44,10 +39,6 @@
     </aside>
 
     <div class="gallery-main">
-        {% if search_query %}
-        <h1>Search results for "{{ search_query }}"</h1>
-        <p class="subtitle">{{ pages|length }} match{{ 'es' if pages|length != 1 }}</p>
-        {% else %}
         <h1>{% if current_cat %}{{ current_cat }}{% else %}Main Page{% endif %}</h1>
         {% if not current_cat %}
         <div class="subtitle-block">
@@ -56,12 +47,9 @@
         <p class="subtitle"><a href="https://github.com/vectorgraphics/asymptote-wiki-data" target="_blank">Track changes on GitHub</a></p>
         </div>
         {% endif %}
-        {% endif %}
 
         {% if pages %}
         {% include "gallery.html" %}
-        {% elif search_query %}
-        <p class="no-results">No pages matched your search. Try a different term.</p>
         {% endif %}
     </div>
 </div>
@@ -70,19 +58,6 @@
 document.querySelectorAll('.thumb-frame').forEach(f => {
     f.parentElement.addEventListener('mouseenter', () => f.contentWindow.focus());
 });
-// Search clear button
-const searchInput = document.getElementById('search-input');
-const searchClear = document.getElementById('search-clear');
-if (searchInput && searchClear) {
-    const toggleClear = () => searchClear.style.display = searchInput.value ? '' : 'none';
-    searchInput.addEventListener('input', toggleClear);
-    toggleClear();
-    searchClear.addEventListener('click', () => {
-        searchInput.value = '';
-        searchInput.focus();
-        toggleClear();
-    });
-}
 </script>
 {% endblock %}
 

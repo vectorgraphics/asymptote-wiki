@@ -431,11 +431,7 @@ def search():
     """Search pages by title, author, tags, or source content."""
     query = request.args.get("q", "").strip()
     pages = search_pages(PAGES_DIR, query) if query else []
-    tree = category_tree(PAGES_DIR)
-    modules = [f.name for f in sorted(PAGES_DIR.iterdir())
-               if f.is_file() and f.suffix == ".asy" and not f.name.startswith(".")]
-    return render_template("index.html", pages=pages, tree=tree,
-                           current_cat="", search_query=query, modules=modules)
+    return render_template("search.html", pages=pages, search_query=query)
 
 
 @app.route("/category/<path:cat>")

@@ -1,0 +1,18 @@
+
+{% extends "base.html" %}
+{% block title %}Search: {{ search_query }} -- Asymptote Wiki{% endblock %}
+{% block content %}
+<div class="gallery-main">
+    {% include "search_form.html" %}
+
+    <h1>Search results for "{{ search_query }}"</h1>
+    <p class="subtitle">{{ pages|length }} match{{ 'es' if pages|length != 1 }}</p>
+
+    {% if pages %}
+    {% include "gallery.html" %}
+    {% else %}
+    <p class="no-results">No pages matched your search. Try a different term.</p>
+    {% endif %}
+</div>
+{% endblock %}
+

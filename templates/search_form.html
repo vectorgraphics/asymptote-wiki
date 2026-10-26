@@ -1,0 +1,25 @@
+
+{# Search box + its clear-button behaviour. Included wherever a search input
+   is needed (the main-page sidebar and the search results page). #}
+<form action="{{ url_for('search') }}" method="get" class="search-form">
+    <input type="text" name="q" placeholder="Search examples..."
+           value="{{ search_query or '' }}" id="search-input">
+    <button type="button" class="search-clear" id="search-clear"
+            style="display:none;" title="Clear">&times;</button>
+</form>
+<script>
+(function() {
+    const searchInput = document.getElementById('search-input');
+    const searchClear = document.getElementById('search-clear');
+    if (!searchInput || !searchClear) return;
+    const toggleClear = () => searchClear.style.display = searchInput.value ? '' : 'none';
+    searchInput.addEventListener('input', toggleClear);
+    toggleClear();
+    searchClear.addEventListener('click', () => {
+        searchInput.value = '';
+        searchInput.focus();
+        toggleClear();
+    });
+})();
+</script>
+
