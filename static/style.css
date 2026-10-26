@@ -90,12 +90,11 @@ footer {
 }
 .cat-tree a:hover { background: var(--color-code-bg); text-decoration: none; }
 .cat-tree a.active { background: var(--color-primary); color: #fff; }
-.subcat-header {
+.cat-title-row {
     display: flex;
     align-items: baseline;
     gap: 1rem;
     flex-wrap: wrap;
-    margin-top: 1rem;
 }
 .gallery-main { min-width: 0; }
 .gallery-main h1 { text-align: center; }
