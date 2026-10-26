@@ -299,18 +299,21 @@ def _output_aspect_ratio(path: Path) -> str:
     return "1 / 1"
 
 
-def _auto_display(page_dir: Path) -> str:
+def _auto_display(page_dir: Path, description_html: str = "") -> str:
     """
     Auto-generate display HTML for all .asy files that have compiled output.
     Used when page.md doesn't contain explicit ```asy: fences.
     Modules (no output) are skipped automatically.
+
+    The page's prose (description_html, if any) is the example's description:
+    it is shown at the bottom of the last figure card -- below the figure and
+    its "Open fullscreen" bar -- while the per-figure <h3> title stays above.
     """
     output_dir = page_dir / "output"
-    parts = []
-    if not output_dir.exists():
-        return ""
+    html_files = sorted(output_dir.glob("*.html")) if output_dir.exists() else []
 
-    for html_file in sorted(output_dir.glob("*.html")):
+    parts = []
+    for idx, html_file in enumerate(html_files):
         # html_file is e.g. output/test.asy.html -> source is test.asy
         src_name = html_file.name.removesuffix(".html")
         src_file = page_dir / src_name
@@ -318,6 +321,8 @@ def _auto_display(page_dir: Path) -> str:
 
         url = url_for("serve_output", page_rel=str(page_dir.relative_to(PAGES_DIR)), filename=html_file.name)
         ratio = _output_aspect_ratio(html_file)
+        # The description belongs to the last card (below the figure + bar).
+        description = description_html if idx == len(html_files) - 1 else ""
         display = (
             f"<div class='asy-output asy-html'>"
             f"<h3>{name_html}</h3>"
@@ -325,7 +330,9 @@ def _auto_display(page_dir: Path) -> str:
             f"style='width:100%;aspect-ratio:{ratio};'></iframe>"
             f"<div class='asy-output-bar'>"
             f"<a href='{url}' target='_blank'>Open fullscreen</a>"
-            f"</div></div>"
+            f"</div>"
+            f"{description}"
+            f"</div>"
         )
 
         # Collapsible source
@@ -338,6 +345,10 @@ def _auto_display(page_dir: Path) -> str:
             )
 
         parts.append(display)
+
+    # No figure to attach the description to: still show the prose.
+    if not parts and description_html:
+        return description_html
 
     return "\n".join(parts)
 
@@ -534,11 +545,10 @@ def view_page(page_rel):
     if ASY_FENCE_RE.search(md_text):
         content_html = compile_markdown_with_asy(md_text, page_dir)
     else:
-        content_html = _auto_display(page_dir)
-        # Still render any surrounding markdown prose
-        if md_text.strip():
-            prose_html = _render_markdown(md_text)
-            content_html = prose_html + content_html
+        # The page's markdown prose is the example's description: rendered at
+        # the bottom of the (last) figure card, not above the figure.
+        prose_html = _render_markdown(md_text) if md_text.strip() else ""
+        content_html = _auto_display(page_dir, description_html=prose_html)
 
     # List available source files (skip dotfiles like .tmp_*)
     source_files = [
