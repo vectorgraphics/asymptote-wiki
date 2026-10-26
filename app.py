@@ -281,7 +281,7 @@ def _auto_display(page_dir: Path) -> str:
             f"<div class='asy-output asy-html'>"
             f"<h3>{name_html}</h3>"
             f"<iframe src='{url}' frameborder='0' "
-            f"style='width:100%;min-height:300px;'></iframe>"
+            f"style='width:100%;min-height:400px;'></iframe>"
             f"<div class='asy-output-bar'>"
             f"<a href='{url}' target='_blank'>Open fullscreen</a>"
             f"</div></div>"
@@ -363,7 +363,7 @@ def compile_markdown_with_asy(md_text: str, page_dir: Path) -> str:
             display_html = (
                 f"<div class='asy-output asy-html'>"
                 f"<iframe src='{url}' frameborder='0' "
-                f"style='width:100%;min-height:300px;'></iframe>"
+                f"style='width:100%;min-height:400px;'></iframe>"
                 f"<div class='asy-output-bar'>"
                 f"<a href='{url}' target='_blank'>Open fullscreen</a>"
                 f"</div></div>"
