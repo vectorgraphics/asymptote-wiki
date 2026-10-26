@@ -62,8 +62,8 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-danger">Delete</button>
         </form>
-        {{ example_nav(page, prev_page, next_page) }}
     </div>
+    <div class="example-nav">{{ example_nav(page, prev_page, next_page) }}</div>
 </article>
 <script>
 document.querySelectorAll('.asy-html iframe').forEach(f => {
