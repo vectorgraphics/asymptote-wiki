@@ -168,7 +168,7 @@ footer {
 .example-page { max-width: var(--content-max); }
 .page-header {
     margin-bottom: 1.5rem;
-    max-width: var(--measure);
+    max-width: var(--content-max);
 }
 .page-header h1 { margin-bottom: 0.25rem; }
 .example-nav {
