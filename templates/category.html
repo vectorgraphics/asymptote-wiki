@@ -5,10 +5,10 @@
 {% set back_parent = url_for('view_category', cat=parent) if parent else url_for('index') %}
 {% set back_parent_label = parent.split('/')[-1] if parent else 'Main Page' %}
 <div class="gallery-main">
-    <h1>{{ cat_name }}</h1>
     <div class="gallery-nav">
         <a href="{{ back_parent }}" class="btn btn-sm"><svg class="nav-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.75V3.25M5 10.25l7-7 7 7"/></svg> {{ back_parent_label }}</a>
     </div>
+    <h1>{{ cat_name }}</h1>
 
     {% if subcats %}
     <ul class="cat-tree">
