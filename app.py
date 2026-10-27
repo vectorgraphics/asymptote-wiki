@@ -136,7 +136,7 @@ csrf = CSRFProtect(app)
 limiter = Limiter(
     key_func=get_remote_address,
     app=app,
-    default_limits=["200/hour"],
+    default_limits=["1000/hour"],
     storage_uri="memory://",
 )
 app.config["SESSION_COOKIE_SECURE"] = True
